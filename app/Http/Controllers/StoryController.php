@@ -164,7 +164,7 @@ class StoryController extends Controller
     }
     public function getStoryUser(Request $request)
     {
-        $user = $request->user(); // Mendapatkan user yang sedang login dari token
+        $user = $request->user();
 
         if (!$user) {
             return response()->json([
@@ -173,7 +173,7 @@ class StoryController extends Controller
             ], 401);
         }
 
-        // Mendapatkan semua cerita yang dibuat oleh pengguna saat ini
+
         $stories = Story::where('user_id', $user->id)->get();
 
         if ($stories->isEmpty()) {

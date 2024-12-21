@@ -134,8 +134,8 @@ class UserController extends Controller
                 'name' => 'required',
                 'image' => 'nullable',
                 'aboutme' => 'nullable|string|max:1000',
-                'current_password' => 'required',
-                'new_password' => 'required|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$!%*?&])[A-Za-z\d@#$!%*?&]+$/',
+                'current_password',
+                'new_password' => 'min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$!%*?&])[A-Za-z\d@#$!%*?&]+$/',
             ]);
             if (!empty($validatedData['current_password']) && !empty($validatedData['new_password'])) {
                 if (!Hash::check($validatedData['current_password'], $user->password)) {
@@ -176,6 +176,8 @@ class UserController extends Controller
     {
         //
     }
+
+    //=================REGISTER===================
     public function regis(Request $request)
     {
         try {
@@ -193,10 +195,17 @@ class UserController extends Controller
                 'image' => 'nullable'
             ]);
             $validateData['password'] = Hash::make($validateData['password']);
+
             $newUser = User::create($validateData);
+            $plainTextToken = $newUser->createToken('API Token')->plainTextToken;
             return response()->json([
                 'message' => 'Register Successfully',
-                'success' => true
+                'success' => true,
+                'data' => [
+                    'user' => $newUser,
+                    'token' => $plainTextToken
+                ]
+
             ], 201);
         } catch (ValidationException $e) {
             return response()->json([
@@ -210,75 +219,107 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    //=================LOGIN==========================
     public function login(Request $request)
     {
-        try {
-            $credentials = $request->validate([
-                'email' => 'required',
-                'password' => 'required',
-            ]);
-            $loginField = str_contains($credentials['email'], '@') ? 'email' : 'username';
-            $loginCredentials = [
-                $loginField => $credentials['email'],
-                'password' => $credentials['password']
-            ];
-            if (!Auth::attempt($loginCredentials)) {
-                return response()->json([
-                    'message' => 'Invalid credentials or account disabled',
-                    'success' => false,
-                    'data' => null,
-                ], 400);
-            }
-            $user = User::where('email', $credentials['email'])
-                ->orWhere('username', $credentials['email'])
-                ->first();
-            if (!$user) {
-                return response()->json([
-                    'message' => 'User not found. Please register first.',
-                    'success' => false,
-                    'data' => null,
-                ], 404);
-            }
-            // $validator = Validator::make($request->all(), [
-            //     'email' => 'required|email',
-            //     'password' => 'required'
-            // ]);
-            // if ($validator->fails()) {
-            //     return response()->json(["errors" => $validator->errors()], 422);
-            // }
-            // $user = User::where('email', $request->email)->orWhere('username', $request->username)->first();
-            // if (!$user || !Hash::check($request->password, $user->password)) {
-            //     // throw ValidationException::withMessages([
-            //     //     'email' => ['The provided credentials are incorrect'],
-            //     // ]);
-            //     return response()->json([
-            //         'message' => 'Invalid email or password',
-            //         'status' => false,
-            //     ], 401);
-            // }
-            $user->tokens()->delete();
-            $hours = (int) 4;
-            $plainTextToken = $user->createToken($user->email, ['*'], now()->addHours($hours))->plainTextToken;
-            // $generateToken = $user->createToken($user->email, ['*'], now()->addHours($hours));
+        $credentials = $request->validate([
+            'email' => 'required',
+            'password' => 'required',
+        ]);
+        $loginField = str_contains($credentials['email'], '@') ? 'email' : 'username';
+
+        if (!Auth::attempt([$loginField => $credentials['email'], 'password' => $credentials['password']])) {
             return response()->json([
-                'message' => "Login Successfully",
-                "data" => ["token" => $plainTextToken]
-            ]);
-        } catch (ValidationException $e) {
-            return response()->json([
+                'message' => 'Invalid credentials or account disabled',
                 'success' => false,
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'data' => null
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'status' => 'error',
-                'message' => 'Something Wrong'
-            ], 500);
+                'data' => null,
+            ], 400);
         }
+
+        $user = Auth::user();
+
+        $user->tokens()->delete();
+        $plainTextToken = $user->createToken('API Token')->plainTextToken;
+
+        return response()->json([
+            'message' => "Login Successfully",
+            'success' => true,
+            'data' => [
+                'token' => $plainTextToken,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'username' => $user->username,
+                    'image' => $user->image,
+                ]
+            ]
+        ], 200);
     }
+
+    // public function login(Request $request)
+    // {
+    //     try {
+    //         $credentials = $request->validate([
+    //             'email' => 'required',
+    //             'password' => 'required',
+    //         ]);
+    //         $loginField = str_contains($credentials['email'], '@') ? 'email' : 'username';
+    //         $loginCredentials = [
+    //             $loginField => $credentials['email'],
+    //             'password' => $credentials['password']
+    //         ];
+    //         if (!Auth::attempt($loginCredentials)) {
+    //             return response()->json([
+    //                 'message' => 'Invalid credentials or account disabled',
+    //                 'success' => false,
+    //                 'data' => null,
+    //             ], 400);
+    //         }
+    //         $user = Auth::user();
+    //         $user = User::where('email', $credentials['email'])
+    //             ->orWhere('username', $credentials['email'])
+    //             ->first();
+    //         if (!$user) {
+    //             return response()->json([
+    //                 'message' => 'User not found. Please register first.',
+    //                 'success' => false,
+    //                 'data' => null,
+    //             ], 404);
+    //         }
+    //         $user->tokens()->delete();
+    //         $hours = (int) 4;
+    //         $plainTextToken = $user->createToken($user->email, ['*'], now()->addHours($hours))->plainTextToken;
+    //         // $generateToken = $user->createToken($user->email, ['*'], now()->addHours($hours));
+    //         return response()->json([
+    //             'message' => "Login Successfully",
+    //             'success' => true,
+    //             "data" => ["token" => $plainTextToken, 'user' => [
+    //                 'id' => $user->id,
+    //                 'name' => $user->name,
+    //                 'email' => $user->email,
+    //                 'username' => $user->username,
+    //                 'image' => $user->image,
+    //             ]]
+    //         ]);
+    //     } catch (ValidationException $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'status' => 'error',
+    //             'message' => $e->getMessage(),
+    //             'data' => null
+    //         ], 422);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'status' => 'error',
+    //             'message' => 'Something Wrong'
+    //         ], 500);
+    //     }
+    // }
+
+    //=====================LOGOUT==================
     public function logout(Request $request)
     {
         $request->user()->tokens()->delete();

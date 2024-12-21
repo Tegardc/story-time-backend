@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\UploadFileController;
@@ -24,6 +25,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('story', StoryController::class);
     Route::get('/story-user', [StoryController::class, 'getStoryUser']);
     Route::delete('/story/{id}', [StoryController::class, 'destroy']);
+    Route::get('bookmark-user', [BookmarkController::class, 'show']);
+    Route::post('/bookmark', [BookmarkController::class, 'store']);
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -42,3 +45,5 @@ Route::post('/category', [CategoryController::class, 'store'])->name('store');
 Route::put('/story/{id}', [StoryController::class, 'update'])->name('update');
 Route::get('/story', [StoryController::class, 'index'])->name('index');
 Route::get('/story/{id}', [StoryController::class, 'show'])->name('show');
+
+Route::delete('/bookmark/{id}', [BookmarkController::class, 'destroy']);
