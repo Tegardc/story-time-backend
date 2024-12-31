@@ -22,11 +22,12 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users-id', [UserController::class, 'show'])->name('user.show');
     Route::put('/users', [UserController::class, 'update'])->name('update');
+    Route::put('/users/{id}', [UserController::class, 'updateById']);
     Route::apiResource('story', StoryController::class);
     Route::get('/story-user', [StoryController::class, 'getStoryUser']);
     Route::delete('/story/{id}', [StoryController::class, 'destroy']);
     Route::get('bookmark-user', [BookmarkController::class, 'show']);
-    Route::post('/bookmark', [BookmarkController::class, 'store']);
+    Route::post('/bookmark', [BookmarkController::class, 'bookmark']);
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

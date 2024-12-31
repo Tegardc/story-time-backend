@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class UploadFileController extends Controller
@@ -15,6 +17,47 @@ class UploadFileController extends Controller
     {
         //
     }
+    // public function uploadFile(Request $request)
+    // {
+    //     try {
+    //         $request->validate(['file' => ['required', 'file']]);
+    //         $file = $request->file('file');
+    //         if (!$file->isValid()) {
+    //             return response()->json([
+    //                 'message' => 'File invalid',
+    //                 'success' => false,
+    //                 'data' => null
+    //             ], 422);
+    //         }
+
+    //         $fileName = time();
+    //         $resultFile = $file->storeAs('photos', "{$fileName}.{$file->extension()}");
+
+    //         $baseUrl = Storage::url($resultFile);
+
+    //         return response()->json([
+    //             'message' => 'Upload File Success',
+    //             'success' => true,
+    //             'data' => ['url' => $baseUrl]
+    //         ], 200);
+    //     } catch (ValidationException $e) {
+    //         return response()->json([
+    //             'message' => $e->errors(),
+    //             'success' => false,
+    //         ], 422);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'message' => 'Something Wrong, Please Try Again',
+    //             'success' => false
+    //         ], 500);
+    //     }
+    // }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    // // 
+
     public function uploadFile(Request $request)
     {
         try {
@@ -22,38 +65,20 @@ class UploadFileController extends Controller
             $file = $request->file('file');
             if (!$file->isValid()) {
                 return response()->json([
-                    'message' => 'File invalid',
-                    'success' => false,
-                    'data' => null
+                    'message' => 'File tidak Valid',
+                    'status' => 'error',
+                    'data' => 'null'
                 ], 422);
             }
-
             $fileName = time();
             $resultFile = $file->storeAs('photos', "{$fileName}.{$file->extension()}");
-
             $baseUrl = Storage::url($resultFile);
-
-            return response()->json([
-                'message' => 'Upload File Success',
-                'success' => true,
-                'data' => ['url' => $baseUrl]
-            ], 200);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => $e->errors(),
-                'success' => false,
-            ], 422);
+            return response()->json(['message' => 'Upload File Success ', 'status' => true, 'data' => ['url' => $baseUrl]], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Something Wrong, Please Try Again',
-                'success' => false
-            ], 500);
+            return response()->json(['message' => $e->getMessage(), 'status' => false], 500);
+            //throw $th;
         }
     }
-
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
