@@ -17,6 +17,24 @@ class CategoryController extends Controller
         return response()->json(['message' => 'Successfully Display Data', 'success' => true, 'data' => $category]);
         //
     }
+    public function getStoryByCategory($id)
+    {
+        // Cari kategori berdasarkan ID
+        $category = Category::with('stories')->find($id);
+
+        // Jika kategori tidak ditemukan
+        if (!$category) {
+            return response()->json([
+                'message' => 'Category not found',
+                'success' => false
+            ], 404);
+        }
+        return response()->json([
+            'message' => 'Category found',
+            'success' => true,
+            'data' => $category
+        ], 200);
+    }
 
     /**
      * Show the form for creating a new resource.
@@ -59,15 +77,21 @@ class CategoryController extends Controller
      */
     public function show($id)
     {
-        $category = Category::find($id);
-        if ($category) {
-            return response()->json(['message' => 'Successfully Display Data', 'success' => true, 'data' => $category]);
-        } else {
-            return response()->json(['Message' => 'Category Not Found', 'success' => false], 404);
-        }
-        //
-    }
+        $category = Category::with('stories')->find($id);
 
+        // Jika kategori tidak ditemukan
+        if (!$category) {
+            return response()->json([
+                'message' => 'Category not found',
+                'success' => false
+            ], 404);
+        }
+        return response()->json([
+            'message' => 'Category found',
+            'success' => true,
+            'data' => $category
+        ], 200);
+    }
     /**
      * Show the form for editing the specified resource.
      */

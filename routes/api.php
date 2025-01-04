@@ -19,14 +19,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
     Route::get('/users-id', [UserController::class, 'show'])->name('user.show');
-    Route::put('/users', [UserController::class, 'update'])->name('update');
-    Route::put('/users/{id}', [UserController::class, 'updateById']);
+    // Route::put('/users', [UserController::class, 'update'])->name('update');
+    // Route::put('/users/{id}', [UserController::class, 'updateById']);
+    Route::put('/user', [UserController::class, 'updateUser']);
+    Route::apiResource('users', UserController::class);
     Route::apiResource('story', StoryController::class);
-    Route::get('/story-user', [StoryController::class, 'getStoryUser']);
-    Route::delete('/story/{id}', [StoryController::class, 'destroy']);
-    Route::get('bookmark-user', [BookmarkController::class, 'show']);
+    Route::apiResource('bookmark', BookmarkController::class);
+    Route::apiResource('category', CategoryController::class);
+    // Route::get('/story-user', [StoryController::class, 'getStoryUser']);
+    // Route::delete('/story/{id}', [StoryController::class, 'destroy']);
+    Route::get('/bookmark-user', [BookmarkController::class, 'show']);
     Route::post('/bookmark', [BookmarkController::class, 'bookmark']);
 });
 
@@ -41,10 +45,13 @@ Route::post('/upload', [UploadFileController::class, 'uploadFile']);
 
 Route::get('/category', [CategoryController::class, 'index'])->name('index');
 Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
+Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
 Route::post('/category', [CategoryController::class, 'store'])->name('store');
 
-Route::put('/story/{id}', [StoryController::class, 'update'])->name('update');
+Route::post('/story/{id}', [StoryController::class, 'update'])->name('update');
+Route::put('/stories/{id}', [StoryController::class, 'updateStory']);
 Route::get('/story', [StoryController::class, 'index'])->name('index');
 Route::get('/story/{id}', [StoryController::class, 'show'])->name('show');
 
-Route::delete('/bookmark/{id}', [BookmarkController::class, 'destroy']);
+Route::get('/stories/popular', [StoryController::class, 'popularStory']);
+Route::get('/stories/newest', [StoryController::class, 'newest']);

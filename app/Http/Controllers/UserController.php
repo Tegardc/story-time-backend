@@ -39,44 +39,43 @@ class UserController extends Controller
      */
     public function show(Request $request)
     {
-        $user = $request->user();
-        if ($user) {
-            $filteredUser = $user->only([
-                'name',
-                'username',
-                'email',
-                'image',
-                'aboutme'
-            ]);
+        try {
+            $user = $request->user();
+            if (!$user) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'User not found',
+                    'data' => null,
+                ], 404);
+            }
+
+            $data = [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'image' => $user->image ? Storage::url($user->image) : null,
+                'aboutme' => $user->aboutme,
+            ];
+
             return response()->json([
-                'message' => 'Successfully Display Data',
+                'status' => 200,
                 'success' => true,
-                'data' => $filteredUser
-            ]);
-        } else {
+                'message' => 'Successfully fetched user data',
+                'data' => $data,
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching user data:', ['error' => $e->getMessage()]);
             return response()->json([
-                'Message' => 'User Not Found',
-                'success' => false
-            ], 404);
+                'status' => 500,
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+                'data' => null,
+            ], 500);
         }
-        // public function show($id)
-        // {
-        //     $user = User::find($id);
-        //     if ($user) {
-        //         $filteredUser = $user->only(['name', 'username', 'email', 'image', 'aboutme']);
-        //         return response()->json([
-        //             'message' => 'Successfully Display Data',
-        //             'success' => true,
-        //             'data' => $filteredUser
-        //         ]);
-        //     } else {
-        //         return response()->json([
-        //             'Message' => 'User Not Found',
-        //             'success' => false
-        //         ], 404);
-        //     }
-        //
     }
+
 
     /**
      * Show the form for editing the specified resource.
@@ -89,39 +88,7 @@ class UserController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    // public function update(Request $request)
-    // {
-    //     // $user = User::find($id);
-    //     // if (!$user) {
-    //     //     return response()->json(['message' => 'Users Not Found', 'status' => false], 404);
-    //     // }
 
-    //     try {
-    //         $user = $request->user();
-    //         $validateData = $request->validate([
-    //             'name' => 'required',
-    //             'image' => 'nullable',
-    //             'aboutme' => 'nullable|string|max:1000',
-
-    //         ]);
-    //         $user->update($validateData);
-    //         return response()->json([
-    //             'message' => 'User Updated Successfully',
-    //             'success' => true
-    //         ], 200);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'message' => $e->errors(),
-    //             'success' => false
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'message' => 'Error Update Data',
-    //             'success' => false
-    //         ], 500);
-    //     }
-    //     //
-    // }
     public function update(Request $request)
     {
         try {
@@ -232,13 +199,16 @@ class UserController extends Controller
     }
     public function updateUser(Request $request)
     {
-        // $user = User::find($id);
-        // if (!$user) {
-        //     return response()->json(['message' => 'Users Not Found', 'status' => false], 404);
-        // }
 
         try {
             $user = $request->user();
+            if (!$user) {
+                return response()->json([
+                    'status' => 401,
+                    'success' => false,
+                    'message' => 'User not authenticated',
+                ], 401);
+            }
             $validatedData = $request->validate([
                 'name' => 'sometimes|string',
                 'username' => 'sometimes|string',
@@ -250,21 +220,21 @@ class UserController extends Controller
             if (!empty($validatedData['current_password']) && !empty($validatedData['new_password'])) {
                 if (!Hash::check($validatedData['current_password'], $user->password)) {
                     return response()->json([
-                        'message' => 'Current password is incorrect',
+                        'status' => 400,
                         'success' => false,
+                        'message' => 'Current password is incorrect',
                     ], 400);
                 }
                 $user->password = Hash::make($validatedData['new_password']);
             }
             if ($request->hasFile('image')) {
                 if ($user->image) {
-                    Storage::delete($user->image);
+                    Storage::delete('public/' . $user->image);
                 }
                 $imagePath = $request->file('image')->store('images', 'public');
                 $user->image = $imagePath;
             }
-            $user->fill($validatedData);
-            Log::info('User data before saving:', $user->toArray());
+            $user->fill(collect($validatedData)->except(['current_password', 'new_password', 'image'])->toArray());;
             $user->save();
             $data = [
                 'user' => [
@@ -272,7 +242,7 @@ class UserController extends Controller
                     'name' => $user->name,
                     'username' => $user->username,
                     'aboutme' => $user->aboutme,
-                    'image' => $user->image
+                    'image' => $user->image ? Storage::url($user->image) : null,
 
 
 
@@ -280,20 +250,25 @@ class UserController extends Controller
             ];
 
             return response()->json([
-                'message' => 'User Updated Successfully',
+                'status' => 200,
                 'success' => true,
+                'message' => 'User Updated Successfully',
                 'data' => $data
             ], 200);
         } catch (ValidationException $e) {
             Log::error('Error updating user:', ['message' => $e->getMessage()]);
             return response()->json([
+                'status' => 422,
+                'success' => false,
                 'message' => $e->errors(),
-                'success' => false
+
+
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
+                'status' => 500,
+                'success' => false,
                 'message' => 'Error Update Data',
-                'success' => false
             ], 500);
         };
         //
@@ -388,7 +363,7 @@ class UserController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'username' => $user->username,
-                    'image' => $user->image,
+                    'image' => $user->image ? Storage::url($user->image) : null,
 
                 ],
                 'token' => $plainTextToken,

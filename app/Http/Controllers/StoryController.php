@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use PDO;
 
 class StoryController extends Controller
 {
@@ -190,6 +191,13 @@ class StoryController extends Controller
             'data' => $data
         ]);
     }
+    // public function getStoryByCategory($id) {
+    //     $story = Story::with('categories')->find($id);
+    //     if(!$story){
+    //         return response()->json(['message'=>'Story Not Found','success'=>false],404);
+    //     }
+    //     $data = ['category'=>['id'=>$story->category->id,'name'=>$story->category->name]]
+    // }
 
 
     /**
@@ -213,17 +221,16 @@ class StoryController extends Controller
             ], 401);
         }
 
-        $story = Story::find($id);
+        $story = Story::where('id', $id)->where('user_id', $user->id)->first();
         if (!$story) {
             return response()->json([
-                'message' => 'Story not found',
+                'message' => 'Story not found or you do not have permission to access it',
                 'success' => false,
             ], 404);
         }
 
         try {
-            Log::info($request->all()); // Log data yang diterima
-
+            Log::info($request->all());
             $validateData = $request->validate([
                 'title' => 'sometimes|string|max:255',
                 'content' => 'sometimes|string|max:1000',
@@ -233,23 +240,26 @@ class StoryController extends Controller
             ]);
 
             $story->update($validateData);
-
-            // Update cover jika ada
             if ($request->hasFile('cover')) {
-                Log::info('Cover file received'); // Log jika file diterima
+                Log::info('Cover file received');
                 if ($story->cover) {
                     $oldCoverPath = str_replace('/storage/', '', $story->cover);
-                    Log::info('Deleting old cover: ' . $oldCoverPath); // Log path yang dihapus
-                    Storage::delete($oldCoverPath); // Hapus file lama
+                    Log::info('Deleting old cover: ' . $oldCoverPath);
+                    Storage::delete($oldCoverPath);
                 }
                 $coverPath = $request->file('cover')->store('story_covers', 'public');
-                $story->cover = Storage::url($coverPath); // Simpan URL ke database
-                $story->save(); // Simpan perubahan
-                Log::info('Updated story cover: ' . $story->cover); // Log cover yang diperbarui
+                $story->cover = Storage::url($coverPath);
+                $story->save();
+                Log::info('Updated story cover: ' . $story->cover);
             }
-
-            // Simpan gambar tambahan jika ada
             if ($request->hasFile('images')) {
+                $oldImages = StoryImage::where('story_id', $story->id)->get();
+                foreach ($oldImages as $oldImage) {
+                    $oldImagePath = str_replace('/storage/', '', $oldImage->image_path);
+                    Log::info('Deleting old image: ' . $oldImagePath);
+                    Storage::delete($oldImagePath);
+                    $oldImage->delete();
+                }
                 foreach ($request->file('images') as $image) {
                     $imagePath = $image->store('story_images', 'public');
                     StoryImage::create([
@@ -277,52 +287,6 @@ class StoryController extends Controller
         }
     }
 
-    // public function update(Request $request, $id)
-    // {
-    //     $user = $request->user();
-    //     if (!$user) {
-    //         return response()->json([
-    //             'message' => 'User Not Authenticated',
-    //             'success' => false
-    //         ], 404);
-    //     }
-    //     $story = Story::find($id);
-    //     if (!$story) {
-    //         return response()->json([
-    //             'message' => 'Story not found',
-    //             'success' => false,
-    //         ], 404);
-    //     }
-    //     try {
-    //         $validateData = $request->validate([
-    //             'title' => 'required|unique:stories,title',
-    //             'content' => 'required|max:1000',
-    //             'category_id' => 'required|exists:categories,id',
-    //             'cover' => 'required|image|mimes:jpg,png,svg,gif,webp|max:2018'
-    //         ]);
-    //         $story->update($validateData);
-    //         return response()->json([
-    //             'message' => 'Updated Success',
-    //             'success' => true
-    //         ], 200);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'message' => $e->errors(),
-    //             'status' => false
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'message' => 'Error Update Data',
-    //             'status' => false
-    //         ], 500);
-    //         //throw $th;
-    //     }
-    //     //
-    // }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id)
     {
         $story = Story::find($id);
@@ -365,5 +329,82 @@ class StoryController extends Controller
             'success' => true,
             'data' => $stories,
         ], 200);
+    }
+    public function popularStory()
+    {
+        try {
+            $populerStories = Story::withCount(['bookmarks' => function ($query) {
+                $query->where('created_at', '>=', now()->subDays(100));
+            }])->orderBy('bookmarks_count', 'desc')->take(10)->get();
+            if ($populerStories->isEmpty()) {
+                return response()->json(['status' => 404, 'success' => false, 'message' => 'No Populer Stories Available', 'data' => []], 404);
+            }
+            $data = $populerStories->map(function ($story) {
+                return [
+                    'id' => $story->id,
+                    'title' => $story->title,
+                    'content' => $story->content,
+                    'cover' => $story->cover,
+                    'bookmark_count' => $story->bookmarks_count,
+                    'created_at' => $story->created_at->format('Y-m-d H:i:s'),
+                ];
+            });
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Populer Stories retrived successfully',
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching popular stories:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+                'data' => [],
+            ], 500);
+        }
+    }
+    public function newest()
+    {
+        try {
+            $newestStories = Story::orderBy('updated_at', 'desc')
+                ->take(10)
+                ->get();
+
+            if ($newestStories->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No New Stories Available',
+                    'data' => []
+                ], 404);
+            }
+            $data = $newestStories->map(function ($story) {
+                return [
+                    'id' => $story->id,
+                    'title' => $story->title,
+                    'content' => $story->content,
+                    'cover' => $story->cover,
+                    'updated_at' => $story->updated_at->format('Y-m-d H:i:s'),
+                    'created_at' => $story->created_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Newest Stories retrieved successfully',
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching newest stories:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+                'data' => [],
+            ], 500);
+        }
     }
 }

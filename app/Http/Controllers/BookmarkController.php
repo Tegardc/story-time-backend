@@ -152,6 +152,12 @@ class BookmarkController extends Controller
             return response()->json(['message' => 'No Bookmark Found for this user', 'success' => false], 404);
         }
         $data = $bookmark->map(function ($bookmark) {
+            $story = $bookmark->story;
+
+            // Pastikan story dan relasi terkait tidak null
+            if (!$story || !$story->user || !$story->category) {
+                return null; // Abaikan bookmark yang tidak valid
+            }
             return [
                 'id' => $bookmark->id,
                 'bookmark_user_id' => $bookmark->user_id,
