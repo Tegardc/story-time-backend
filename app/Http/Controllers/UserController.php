@@ -236,6 +236,10 @@ class UserController extends Controller
             }
             $user->fill(collect($validatedData)->except(['current_password', 'new_password', 'image'])->toArray());;
             $user->save();
+            // $newToken = null;
+            // if (!empty($validatedData['new_password'])) {
+            //     $newToken = $user->createToken('auth_token')->plainTextToken;
+            // }
             $data = [
                 'user' => [
                     'id' => $user->id,
@@ -244,9 +248,8 @@ class UserController extends Controller
                     'aboutme' => $user->aboutme,
                     'image' => $user->image ? Storage::url($user->image) : null,
 
-
-
                 ],
+                // 'token' => $newToken,
             ];
 
             return response()->json([

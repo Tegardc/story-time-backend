@@ -230,6 +230,88 @@ class StoryController extends Controller
         }
 
         try {
+            // Validasi input
+            $validateData = $request->validate([
+                'title' => 'sometimes|string|max:255',
+                'content' => 'sometimes|string|max:1000',
+                'category_id' => 'sometimes|exists:categories,id',
+                'cover' => 'sometimes|string',  // Base64 string
+                'images' => 'sometimes|array',
+                'images.*' => 'sometimes|string'  // Base64 string
+            ]);
+
+            // ✅ Update Story Details
+            $story->update($validateData);
+
+            // ✅ Handle Cover Image (Base64)
+            if (!empty($request->cover)) {
+                // Hapus cover lama
+                if ($story->cover) {
+                    Storage::delete(str_replace('/storage/', '', $story->cover));
+                }
+
+                // Decode base64 dan simpan ke storage
+                $coverPath = $this->saveBase64Image($request->cover, 'story_covers');
+                $story->cover = Storage::url($coverPath);
+                $story->save();
+            }
+
+            // ✅ Handle Multiple Images (Base64)
+            if (!empty($request->images)) {
+                // Hapus gambar lama
+                $oldImages = StoryImage::where('story_id', $story->id)->get();
+                foreach ($oldImages as $oldImage) {
+                    Storage::delete(str_replace('/storage/', '', $oldImage->image_path));
+                    $oldImage->delete();
+                }
+
+                // Simpan gambar baru
+                foreach ($request->images as $base64Image) {
+                    $imagePath = $this->saveBase64Image($base64Image, 'story_images');
+                    StoryImage::create([
+                        'story_id' => $story->id,
+                        'image_path' => Storage::url($imagePath),
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'message' => 'Updated Successfully',
+                'success' => true,
+                'data' => $story
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => $e->errors(),
+                'status' => false
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error Updating Data: ' . $e->getMessage(),
+                'status' => false
+            ], 500);
+        }
+    }
+
+    public function updateStory(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'message' => 'User Not Authenticated',
+                'success' => false
+            ], 401);
+        }
+
+        $story = Story::where('id', $id)->where('user_id', $user->id)->first();
+        if (!$story) {
+            return response()->json([
+                'message' => 'Story not found or you do not have permission to access it',
+                'success' => false,
+            ], 404);
+        }
+
+        try {
             Log::info($request->all());
             $validateData = $request->validate([
                 'title' => 'sometimes|string|max:255',
@@ -368,7 +450,7 @@ class StoryController extends Controller
     public function newest()
     {
         try {
-            $newestStories = Story::orderBy('updated_at', 'desc')
+            $newestStories = Story::orderBy('created_at', 'desc')
                 ->take(10)
                 ->get();
 

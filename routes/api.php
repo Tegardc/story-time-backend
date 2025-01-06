@@ -24,6 +24,7 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
     // Route::put('/users', [UserController::class, 'update'])->name('update');
     // Route::put('/users/{id}', [UserController::class, 'updateById']);
     Route::put('/user', [UserController::class, 'updateUser']);
+    Route::put('/users', [UserController::class, 'update']);
     Route::apiResource('users', UserController::class);
     Route::apiResource('story', StoryController::class);
     Route::apiResource('bookmark', BookmarkController::class);
@@ -41,7 +42,8 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'regis'])->name('regis');
 Route::post('/logout', [UserController::class, 'logout'])->name('user.logout')->middleware(middleware: 'auth:sanctum');
-Route::post('/upload', [UploadFileController::class, 'uploadFile']);
+Route::post('/upload-file', [UploadFileController::class, 'uploadFile']);
+Route::post('/upload', [UploadFileController::class, 'upload']);
 
 Route::get('/category', [CategoryController::class, 'index'])->name('index');
 Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
