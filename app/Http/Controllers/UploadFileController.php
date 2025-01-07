@@ -61,13 +61,19 @@ class UploadFileController extends Controller
     public function uploadFile(Request $request)
     {
         try {
-            $request->validate(['files.*' => ['required', 'file', 'mimes:jpg,jpeg,png,gif,webp', 'max:2048']]);
+            $request->validate(['files.*' => [
+                'required',
+                'file',
+                'mimes:jpg,jpeg,png,gif,webp',
+                'max:2048'
+            ]]);
             $uploadedFiles = [];
             foreach ($request->file('files') as $file) {
                 if (!$file->isValid()) {
                     return response()->json([
+                        'status' => 422,
+                        'success' => false,
                         'message' => 'File tidak valid',
-                        'status' => 'error',
                         'data' => null
                     ], 422);
                 }
@@ -77,14 +83,16 @@ class UploadFileController extends Controller
                 $uploadedFiles[] = $baseUrl;
             }
             return response()->json([
+                'status' => 200,
+                'success' => true,
                 'message' => 'Upload Files Success',
-                'status' => true,
                 'data' => ['urls' => $uploadedFiles]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
+                'status' => 500,
+                'success' => false,
                 'message' => 'Error: ' . $e->getMessage(),
-                'status' => false
             ], 500);
         }
     }
@@ -92,54 +100,54 @@ class UploadFileController extends Controller
     {
 
         try {
-            // Validasi file
             $request->validate([
                 'files' => ['required'],
-                'files.*' => ['file', 'mimes:jpg,jpeg,png,gif,webp', 'max:2048']
+                'files.*' => [
+                    'file',
+                    'mimes:jpg,jpeg,png,gif,webp',
+                    'max:2048'
+                ]
             ]);
 
             $uploadedFiles = [];
 
-            // Cek apakah hanya 1 file yang diunggah
             if ($request->hasFile('files') && is_array($request->file('files'))) {
                 foreach ($request->file('files') as $file) {
                     if (!$file->isValid()) {
                         return response()->json([
+                            'status' => 422,
+                            'success' => false,
                             'message' => 'File tidak valid',
-                            'status' => 'error',
                             'data' => null
                         ], 422);
                     }
 
-                    // Simpan file dengan nama unik
                     $fileName = time() . '_' . uniqid();
                     $resultFile = $file->storeAs('photos', "{$fileName}.{$file->extension()}", 'public');
                     $baseUrl = Storage::url($resultFile);
 
-                    // Tambahkan URL ke dalam array hasil
                     $uploadedFiles[] = $baseUrl;
                 }
             }
-
-            // Jika hanya 1 file, kembalikan sebagai string
             if (count($uploadedFiles) === 1) {
                 return response()->json([
-                    'message' => 'Upload File Success',
-                    'status' => true,
+                    'status' => 200,
+                    'success' => true,
+                    'message' => 'Upload Files Success',
                     'data' => $uploadedFiles[0]
                 ], 200);
             }
-
-            // Jika lebih dari 1 file, kembalikan sebagai array
             return response()->json([
+                'status' => 200,
+                'success' => true,
                 'message' => 'Upload Files Success',
-                'status' => true,
                 'data' => $uploadedFiles
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
+                'status' => 500,
+                'success' => false,
                 'message' => 'Error: ' . $e->getMessage(),
-                'status' => false
             ], 500);
         }
     }

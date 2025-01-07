@@ -20,40 +20,42 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
-    Route::get('/users-id', [UserController::class, 'show'])->name('user.show');
-    // Route::put('/users', [UserController::class, 'update'])->name('update');
-    // Route::put('/users/{id}', [UserController::class, 'updateById']);
-    Route::put('/user', [UserController::class, 'updateUser']);
-    Route::put('/users', [UserController::class, 'update']);
+    //API USERS//
     Route::apiResource('users', UserController::class);
+    Route::get('/users', [UserController::class, 'show'])->name('user.show');
+    Route::put('/users', [UserController::class, 'update']);
+
+    //API STORY??
     Route::apiResource('story', StoryController::class);
+    Route::post('/story/{id}', [StoryController::class, 'update'])->name('update');
+    Route::put('/stories/{id}', [StoryController::class, 'updateStory']);
+    Route::get('/story', [StoryController::class, 'index'])->name('index');
+    Route::get('/story-user', [StoryController::class, 'getStoryUser']);
+    Route::get('/story/{id}', [StoryController::class, 'show'])->name('show');
+    Route::get('/stories/popular', [StoryController::class, 'popularStory']);
+    Route::get('/stories/newest', [StoryController::class, 'newest']);
+
+    //API BOOKMARK??
     Route::apiResource('bookmark', BookmarkController::class);
-    Route::apiResource('category', CategoryController::class);
-    // Route::get('/story-user', [StoryController::class, 'getStoryUser']);
-    // Route::delete('/story/{id}', [StoryController::class, 'destroy']);
     Route::get('/bookmark-user', [BookmarkController::class, 'show']);
     Route::post('/bookmark', [BookmarkController::class, 'bookmark']);
+    // Route::get('/story-user', [StoryController::class, 'getStoryUser']);
+    // Route::delete('/story/{id}', [StoryController::class, 'destroy']);
+
 });
+Route::apiResource('category', CategoryController::class);
+Route::post('/login', [UserController::class, 'login'])->name('login');
+Route::post('/register', [UserController::class, 'regis'])->name('regis');
+Route::post('/logout', [UserController::class, 'logout'])->name('user.logout')->middleware(middleware: 'auth:sanctum');
+Route::post('/upload', [UploadFileController::class, 'upload']);
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //     return $request->user();
 // });
 // Route::post('/change-password', [UserController::class, 'changePassword']);
-Route::post('/login', [UserController::class, 'login'])->name('login');
-Route::post('/register', [UserController::class, 'regis'])->name('regis');
-Route::post('/logout', [UserController::class, 'logout'])->name('user.logout')->middleware(middleware: 'auth:sanctum');
-Route::post('/upload-file', [UploadFileController::class, 'uploadFile']);
-Route::post('/upload', [UploadFileController::class, 'upload']);
 
-Route::get('/category', [CategoryController::class, 'index'])->name('index');
-Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
-Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
-Route::post('/category', [CategoryController::class, 'store'])->name('store');
-
-Route::post('/story/{id}', [StoryController::class, 'update'])->name('update');
-Route::put('/stories/{id}', [StoryController::class, 'updateStory']);
-Route::get('/story', [StoryController::class, 'index'])->name('index');
-Route::get('/story/{id}', [StoryController::class, 'show'])->name('show');
-
-Route::get('/stories/popular', [StoryController::class, 'popularStory']);
-Route::get('/stories/newest', [StoryController::class, 'newest']);
+// Route::post('/upload-file', [UploadFileController::class, 'uploadFile']);
+// Route::get('/category', [CategoryController::class, 'index'])->name('index');
+// Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
+// Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
+// Route::post('/category', [CategoryController::class, 'store'])->name('store');

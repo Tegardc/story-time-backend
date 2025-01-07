@@ -32,4 +32,8 @@ class Story extends Model
     {
         return $this->hasMany(Bookmark::class, 'story_id', 'id');
     }
+    public function images()
+    {
+        return $this->hasMany(StoryImage::class);
+    }
 }

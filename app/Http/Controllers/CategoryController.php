@@ -14,15 +14,17 @@ class CategoryController extends Controller
     public function index()
     {
         $category = Category::all();
-        return response()->json(['message' => 'Successfully Display Data', 'success' => true, 'data' => $category]);
+        return response()->json([
+            'status' => 200,
+            'success' => true,
+            'message' => 'Successfully Display Data',
+            'data' => $category
+        ]);
         //
     }
     public function getStoryByCategory($id)
     {
-        // Cari kategori berdasarkan ID
         $category = Category::with('stories')->find($id);
-
-        // Jika kategori tidak ditemukan
         if (!$category) {
             return response()->json([
                 'message' => 'Category not found',
@@ -75,7 +77,68 @@ class CategoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id)
+    public function show(Request $request, $id)
+    {
+        try {
+            $pagination = $request->query('per_page', 5);
+
+            $category = Category::find($id);
+
+            if (!$category) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'Category not found',
+                ], 404);
+            }
+
+            $storiesQuery = $category->stories()->with('user');
+            $storiesPaginated = $storiesQuery->paginate($pagination);
+
+            $formattedStories = $storiesPaginated->getCollection()->map(function ($story) {
+                return [
+                    'id' => $story->id,
+                    'title' => $story->title,
+                    'content' => $story->content,
+                    'cover' => $story->cover,
+                    'created_at' => $story->created_at,
+                    'author' => $story->user ? [
+                        'author_id' => $story->user->id,
+                        'author_name' => $story->user->username,
+                        'author_image' => $story->user->image,
+                    ] : null,
+                ];
+            });
+
+            $storiesPaginated->setCollection($formattedStories);
+
+            $data = [
+                'category' => [
+                    'id' => $category->id,
+                    'category_name' => $category->name,
+                ],
+                'stories' => $storiesPaginated,
+            ];
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Category found',
+                'data' => $data,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'Error retrieving category data',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+
+    public function showStory($id)
     {
         $category = Category::with('stories')->find($id);
 

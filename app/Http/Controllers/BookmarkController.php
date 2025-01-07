@@ -21,11 +21,9 @@ class BookmarkController extends Controller
         try {
             $validateData = $request->validate([
                 'story_id' => 'required|exists:stories,id',
-                // 'user_id' => 'required|exists:users,id'
             ]);
             $user = $request->user();
             $validateData['user_id'] = $user->id;
-            // $newBookmark = Bookmark::create($validateData);
 
             $bookmark = Bookmark::where([
                 'user_id' => $validateData['user_id'],
@@ -35,15 +33,17 @@ class BookmarkController extends Controller
             if ($bookmark) {
                 $bookmark->delete();
                 return response()->json([
-                    'message' => 'Successfully Deleted Bookmark .',
+                    'status' => 200,
                     'success' => true,
+                    'message' => 'Successfully Deleted Bookmark .',
                 ], 200);
             } else {
                 $newBookmark = Bookmark::create($validateData);
                 $story = Story::find($validateData['story_id']);
                 return response()->json([
-                    'message' => 'Bookmark Added.',
+                    'status' => 200,
                     'success' => true,
+                    'message' => 'Bookmark Added.',
                     'data' => [
                         'bookmark' => [
                             'id' => $newBookmark->id,
@@ -51,27 +51,32 @@ class BookmarkController extends Controller
                             'username' => $user->username,
                         ],
                         'story' => [
-                            'story_id' => $newBookmark->story_id,
-                            'story_name' => $story->title,
-                            'created_story' => $story->created_at,
-                            'category' => $story->category->name,
-                            'story_author_id' => $story->user_id,
-                            'author_name' => $story->user->username,
-                            'image' => $story->user->image,
-                            'content' => $story->content
+                            'id' => $newBookmark->story_id,
+                            'title' => $story->title,
+                            'created_at' => $story->created_at,
+                            'category' =>
+                            $story->category->name,
+                            'content' => $story->content,
+                            'author' => $story->user ? [
+                                'author_id' => $story->user_id,
+                                'author_name' => $story->user->username,
+                                'image' => $story->user->image,
+                            ] : null,
                         ]
                     ]
                 ], 200);
             }
         } catch (ValidationException $e) {
             return response()->json([
+                'status' => 422,
+                'success' => false,
                 'message' => $e->errors(),
-                'success' => false
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Error Created Data',
+                'status' => 500,
                 'success' => false,
+                'message' => 'Error Created Data',
                 'errors' => $e->getMessage()
             ], 500);
         }
@@ -90,99 +95,69 @@ class BookmarkController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
-    {
-        try {
-            $validateData = $request->validate(['story_id' => 'required|exists:stories,id']);
-            $user = $request->user();
-            $validateData['user_id'] = $user->id;
-            $newBookmark = Bookmark::create($validateData);
-            $story = Story::find($validateData['story_id']);
-
-            return response()->json([
-                'message' => 'Added Bookmark',
-                'success' => true,
-                'data' => [
-                    'bookmark' => [
-                        'id' => $newBookmark->id,
-                        'user_id' => $newBookmark->user_id,
-                        'username' => $user->username,
-                    ],
-                    'story' => [
-                        'story_id' => $newBookmark->story_id,
-                        'story_name' => $story->title,
-                        'created_story' => $story->created_at,
-                        'category' => $story->category->name,
-                        'story_author_id' => $story->user_id,
-                        'author_name' => $story->user->username,
-                        'content' => $story->content,
-                        'image' => $story->user->image
-                    ]
-
-
-
-                ]
-            ]);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => $e->errors(),
-                'success' => false
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error Created Data',
-                'success' => false,
-                'errors' => $e->getMessage()
-            ], 500);
-        }
-        //
-    }
+    public function store(Request $request) {}
 
     /**
      * Display the specified resource.
      */
     public function show(Request $request)
     {
+        $pagination = $request->query('per_page', 5);
+
         $user = $request->user();
         if (!$user) {
-            return response()->json(['message' => 'Unauthorisize', 'status' => false], 402);
+            return response()->json([
+                'status' => 402,
+                'success' => false,
+                'message' => 'Unauthorized',
+
+            ], 402);
         }
-        $bookmark = Bookmark::where('user_id', $user->id)->with('story.user')->get();
-        if ($bookmark->isEmpty()) {
+
+        $bookmarkQuery = Bookmark::where('user_id', $user->id)
+            ->with('story.user', 'story.category');
+
+        $bookmarksPaginated = $bookmarkQuery->paginate($pagination);
+
+        if ($bookmarksPaginated->isEmpty()) {
             return response()->json(['message' => 'No Bookmark Found for this user', 'success' => false], 404);
         }
-        $data = $bookmark->map(function ($bookmark) {
+
+        $formattedBookmarks = $bookmarksPaginated->getCollection()->map(function ($bookmark) {
             $story = $bookmark->story;
 
-            // Pastikan story dan relasi terkait tidak null
             if (!$story || !$story->user || !$story->category) {
-                return null; // Abaikan bookmark yang tidak valid
+                return null;
             }
             return [
-                'id' => $bookmark->id,
-                'bookmark_user_id' => $bookmark->user_id,
-                'bookmark_username' => $bookmark->user->username,
-                'story_id' => $bookmark->story_id, // 
-                'story_name' => $bookmark->story->title,
-                'created_story' => $bookmark->story->created_at,
-                'category' => $bookmark->story->category->name,
-                'story_creator_user_id' =>
-                $bookmark->story->user_id,
-                'story_creator_username' => $bookmark->story->user->username
+                'bookmark' => [
+                    'id' => $bookmark->id,
+                    'user_id' => $bookmark->user_id,
+                    'username' => $bookmark->user->username,
+                ],
+                'story' => [
+                    'id' => $story->id,
+                    'title' => $story->title,
+                    'cover' => $story->cover,
+                    'created_at' => $story->created_at,
+                    'category' => $story->category->name,
+                    'author' => [
+                        'author_id' => $story->user_id,
+                        'author_name' => $story->user->username,
+                        'author_image' => $story->user->image,
+                    ]
+                ],
             ];
-        });
+        })->filter()->values();
+        $bookmarksPaginated->setCollection($formattedBookmarks);
+
         return response()->json([
-            'message' => 'Display Bookmark',
+            'status' => 200,
             "success" => true,
-            'data' => $data
+            'message' => 'Display Bookmark Successfully',
+            'data' => $bookmarksPaginated
         ]);
-
-        //
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Bookmark $bookmark)
     {
         //
@@ -199,14 +174,5 @@ class BookmarkController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
-    {
-        $bookmark = Bookmark::find($id);
-        if (!$bookmark) {
-            return response()->json(['message' => 'Bookmark Not Found', 'success' => false], 404);
-        }
-        $bookmark->delete();
-        return response()->json(['message' => 'deleted Success', 'success' => true]);
-        //
-    }
+    public function destroy($id) {}
 }

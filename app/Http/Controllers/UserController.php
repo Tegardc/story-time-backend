@@ -55,7 +55,7 @@ class UserController extends Controller
                 'name' => $user->name,
                 'username' => $user->username,
                 'email' => $user->email,
-                'image' => $user->image ? Storage::url($user->image) : null,
+                'image' => $user->image,
                 'aboutme' => $user->aboutme,
             ];
 
@@ -103,14 +103,14 @@ class UserController extends Controller
             if (!empty($validatedData['current_password']) && !empty($validatedData['new_password'])) {
                 if (!Hash::check($validatedData['current_password'], $user->password)) {
                     return response()->json([
-                        'message' => 'Current password is incorrect',
+                        'status' => 400,
                         'success' => false,
+                        'message' => 'Current password is incorrect',
                     ], 400);
                 }
                 $user->password = Hash::make($validatedData['new_password']);
             }
 
-            // Update data lainnya (kecuali password)
             $user->fill($validatedData);
             $user->save();
             $data = [
@@ -123,80 +123,27 @@ class UserController extends Controller
                 ],
             ];
             return response()->json([
-                'message' => 'User Updated Successfully',
+                'status' => 200,
                 'success' => true,
+                'message' => 'User Updated Successfully',
                 'data' => $data
             ], 200);
         } catch (ValidationException $e) {
             return response()->json([
+                'status' => 422,
+                'success' => false,
                 'message' => $e->errors(),
-                'success' => false
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
+                'status' => 500,
+                'success' => false,
                 'message' => 'Error Update Data',
-                'success' => false
             ], 500);
         };
     }
     //
-    public function updateById(Request $request, $id)
-    {
-        $user = User::find($id);
-        if (!$user) {
-            return response()->json(['message' => 'User Not Found', 'success' => false], 404);
-        }
-
-        try {
-            $validatedData = $request->validate([
-                'name' => 'nullable|string',
-                'image' => 'nullable|string',
-                'aboutme' => 'nullable|string|max:1000',
-                'current_password' => 'required_with:new_password',
-                'new_password' => 'min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$!%*?&])[A-Za-z\d@#$!%*?&]+$/',
-            ]);
-            if (!empty($validatedData['current_password']) && !empty($validatedData['new_password'])) {
-                if (!Hash::check($validatedData['current_password'], $user->password)) {
-                    return response()->json([
-                        'message' => 'Current password is incorrect',
-                        'success' => false,
-                    ], 400);
-                }
-                $user->password = Hash::make($validatedData['new_password']);
-            }
-
-            // Update data lainnya (kecuali password)
-            $user->fill($validatedData);
-            $user->save();
-            $data = [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'username' => $user->username,
-                    'aboutme' => $user->aboutme,
-                    'image' => $user->image
-                ],
-            ];
-            return response()->json([
-                'message' => 'User Updated Successfully',
-                'success' => true,
-                'data' => $data
-            ], 200);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => $e->errors(),
-                'success' => false
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error Update Data',
-                'success' => false
-            ], 500);
-        };
-        //
-
-        //
-    }
+    //Update menggunakan Form Data//
     public function updateUser(Request $request)
     {
 
@@ -236,10 +183,7 @@ class UserController extends Controller
             }
             $user->fill(collect($validatedData)->except(['current_password', 'new_password', 'image'])->toArray());;
             $user->save();
-            // $newToken = null;
-            // if (!empty($validatedData['new_password'])) {
-            //     $newToken = $user->createToken('auth_token')->plainTextToken;
-            // }
+
             $data = [
                 'user' => [
                     'id' => $user->id,
@@ -249,7 +193,6 @@ class UserController extends Controller
                     'image' => $user->image ? Storage::url($user->image) : null,
 
                 ],
-                // 'token' => $newToken,
             ];
 
             return response()->json([
@@ -264,7 +207,6 @@ class UserController extends Controller
                 'status' => 422,
                 'success' => false,
                 'message' => $e->errors(),
-
 
             ], 422);
         } catch (\Exception $e) {
@@ -309,8 +251,9 @@ class UserController extends Controller
 
             $plainTextToken = $newUser->createToken($newUser->email, ['*'], now()->addHours($hours))->plainTextToken;
             return response()->json([
-                'message' => 'Register Successfully',
+                'status' => 201,
                 'success' => true,
+                'message' => 'Register Successfully',
                 'data' => [
                     'user' => $newUser,
                     'token' => $plainTextToken
@@ -319,13 +262,15 @@ class UserController extends Controller
             ], 201);
         } catch (ValidationException $e) {
             return response()->json([
-                'message' => $e->errors(),
+                'status' => 422,
                 'success' => false,
+                'message' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
+                'status' => 500,
+                'success' => false,
                 'message' => 'Something Wrong, Please Try Again',
-                'success' => false
             ], 500);
         }
     }
@@ -341,33 +286,31 @@ class UserController extends Controller
 
         if (!Auth::attempt([$loginField => $credentials['email'], 'password' => $credentials['password']])) {
             return response()->json([
-                'message' => 'Invalid credentials or account disabled',
+                'status' => 400,
                 'success' => false,
+                'message' => 'Invalid credentials or account disabled',
                 'data' => null,
             ], 400);
         }
 
         $user = Auth::user();
-
         $user->tokens()->delete();
-
         $hours = (int) 4;
-
         $plainTextToken = $user->createToken($user->email, ['*'], now()->addHours($hours))->plainTextToken;
         $expiresAt = now()->addHours($hours)->toDateTimeString();
 
         return response()->json([
-            'message' => "Login Successfully",
+            'status' => 200,
             'success' => true,
+            'message' => "Login Successfully",
             'data' => [
-
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'username' => $user->username,
-                    'image' => $user->image ? Storage::url($user->image) : null,
-
+                    'image' => $user->image,
+                    'aboutme' => $user->aboutme
                 ],
                 'token' => $plainTextToken,
                 'expiresToken' => $expiresAt
@@ -375,105 +318,15 @@ class UserController extends Controller
         ], 200);
     }
 
-    // public function login(Request $request)
-    // {
-    //     try {
-    //         $credentials = $request->validate([
-    //             'email' => 'required',
-    //             'password' => 'required',
-    //         ]);
-    //         $loginField = str_contains($credentials['email'], '@') ? 'email' : 'username';
-    //         $loginCredentials = [
-    //             $loginField => $credentials['email'],
-    //             'password' => $credentials['password']
-    //         ];
-    //         if (!Auth::attempt($loginCredentials)) {
-    //             return response()->json([
-    //                 'message' => 'Invalid credentials or account disabled',
-    //                 'success' => false,
-    //                 'data' => null,
-    //             ], 400);
-    //         }
-    //         $user = Auth::user();
-    //         $user = User::where('email', $credentials['email'])
-    //             ->orWhere('username', $credentials['email'])
-    //             ->first();
-    //         if (!$user) {
-    //             return response()->json([
-    //                 'message' => 'User not found. Please register first.',
-    //                 'success' => false,
-    //                 'data' => null,
-    //             ], 404);
-    //         }
-    //         $user->tokens()->delete();
-    //         $hours = (int) 4;
-    //         $plainTextToken = $user->createToken($user->email, ['*'], now()->addHours($hours))->plainTextToken;
-    //         // $generateToken = $user->createToken($user->email, ['*'], now()->addHours($hours));
-    //         return response()->json([
-    //             'message' => "Login Successfully",
-    //             'success' => true,
-    //             "data" => ["token" => $plainTextToken, 'user' => [
-    //                 'id' => $user->id,
-    //                 'name' => $user->name,
-    //                 'email' => $user->email,
-    //                 'username' => $user->username,
-    //                 'image' => $user->image,
-    //             ]]
-    //         ]);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'status' => 'error',
-    //             'message' => $e->getMessage(),
-    //             'data' => null
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'status' => 'error',
-    //             'message' => 'Something Wrong'
-    //         ], 500);
-    //     }
-    // }
 
     //=====================LOGOUT==================
     public function logout(Request $request)
     {
         $request->user()->tokens()->delete();
-        return response()->json(['message' => "Logout Successfully"]);
+        return response()->json([
+            'status' => 200,
+            'success' => true,
+            'message' => "Logout Successfully"
+        ], 200);
     }
-
-    // public function changePassword(Request $request)
-    // {
-    //     try {
-    //         $request->validate([
-    //             'current_password' => 'required',
-    //             'new_password' => 'required|min:8|confirmed|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$!%*?&])[A-Za-z\d@#$!%*?&]+$/',
-    //         ]);
-    //         $user = $request->user();
-    //         if (!Hash::check($request->current_password, $user->password)) {
-    //             return response()->json([
-    //                 'message' => 'Current password is incorrect',
-    //                 'success' => false,
-    //             ], 400);
-    //         }
-    //         $user->update([
-    //             'password' => Hash::make($request->new_password),
-    //         ]);
-    //         return response()->json([
-    //             'message' => 'Password updated successfully',
-    //             'success' => true,
-    //         ], 200);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'message' => $e->errors(),
-    //             'success' => false,
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'message' => 'Something Wrong, Please Try Again',
-    //             'success' => false
-    //         ], 500);
-    //     }
-    // }
 }

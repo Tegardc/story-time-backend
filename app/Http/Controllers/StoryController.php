@@ -36,23 +36,15 @@ class StoryController extends Controller
         if ($stories->isEmpty() && $stories->currentPage() > $stories->lastPage()) {
             $stories = $query->paginate($pagination, ['*'], 'page', $stories->lastPage());
         }
-
-        return response()->json(['message' => 'Successfully Display Data', 'success' => true, 'data' => $stories]);
+        return response()->json([
+            'status' => 200,
+            'success' => true,
+            'message' => 'Successfully Display Data',
+            'data' => $stories
+        ], 200);
     }
-    // public function index()
-    // {
 
-    //     $story = Story::all();
-    //     return  response()->json([
-    //         'message' => 'Successfully Display Data',
-    //         'success' => true,
-    //         'data' => $story
-    //     ]);
-    // }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
@@ -61,39 +53,8 @@ class StoryController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    // public function store(Request $request)
-    // {
-    //     try {
-    //         $validateData = $request->validate([
-    //             'title' => 'required|unique:stories,title',
-    //             'content' => 'required|string|max:1000',
-    //             'category_id' => 'required|exists:categories,id',
-    //             'cover' => 'nullable|image|mimes:jpg,png,svg,gif,webp|max:2048',
-    //         ]);
 
-    //         $user = $request->user();
-    //         $validateData['user_id'] = $user->id;
-
-    //         $newStory = Story::create($validateData);
-    //         return response()->json([
-    //             'message' => "Added Story",
-    //             'success' => true,
-    //             'data' => $newStory
-    //         ], 201);
-    //     } catch (ValidationException $e) {
-    //         return response()->json([
-    //             'message' => $e->errors(),
-    //             'success' => false
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'message' => 'Error Created Data',
-    //             'success' => false,
-    //             'errors' => $e->getMessage()
-    //         ], 500);
-    //     }
-    //     //
-    // }
+    //Create Story dengan Raw//
     public function store(Request $request)
     {
         try {
@@ -101,28 +62,75 @@ class StoryController extends Controller
                 'title' => 'required|unique:stories,title',
                 'content' => 'required|string|max:1000',
                 'category_id' => 'required|exists:categories,id',
+                'cover' => 'required|url',
+                'images' => 'required|array',
+                'images.*' => 'url'
+            ]);
+
+            $user = $request->user();
+            $validateData['user_id'] = $user->id;
+            $newStory = Story::create([
+                'title' => $validateData['title'],
+                'content' => $validateData['content'],
+                'category_id' => $validateData['category_id'],
+                'user_id' => $validateData['user_id'],
+                'cover' => $validateData['cover'],
+            ]);
+
+            foreach ($validateData['images'] as $imageUrl) {
+                StoryImage::create([
+                    'story_id' => $newStory->id,
+                    'image_path' => $imageUrl,
+                ]);
+            }
+            return response()->json([
+                'status' => 201,
+                'success' => true,
+                'message' => "Story Added Successfully",
+                'data' => $newStory->load('images')
+            ], 201);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 422,
+                'success' => false,
+                'message' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'Error Creating Data',
+                'errors' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //Create dengan Form Data///
+    public function createStory(Request $request)
+    {
+        try {
+            $validateData = $request->validate([
+                'title' => 'required|unique:stories,title',
+                'content' => 'required|string|max:1000',
+                'category_id' => 'required|exists:categories,id',
                 'cover' => 'nullable|image|mimes:jpg,png,svg,gif,webp|max:2048',
-                'images.*' => 'nullable|image|mimes:jpg,png,svg,gif,webp|max:2048', // Validasi untuk gambar tambahan
+                'images.*' => 'nullable|image|mimes:jpg,png,svg,gif,webp|max:2048',
             ]);
 
             $user = $request->user();
             $validateData['user_id'] = $user->id;
 
-            // Simpan cerita
             $newStory = Story::create($validateData);
 
-            // Simpan gambar sampul jika ada
             if ($request->hasFile('cover')) {
                 $coverPath = $request->file('cover')->store('story_covers', 'public');
                 $newStory->cover = Storage::url($coverPath);
                 $newStory->save();
             }
 
-            // Simpan gambar tambahan jika ada
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $image) {
                     $imagePath = $image->store('story_images', 'public');
-                    // Simpan ke tabel story_images
                     StoryImage::create([
                         'story_id' => $newStory->id,
                         'image_path' => Storage::url($imagePath),
@@ -159,8 +167,9 @@ class StoryController extends Controller
 
         if (!$story) {
             return response()->json([
+                'status' => 404,
+                'success' => false,
                 'message' => 'Story Not Found',
-                'success' => false
             ], 404);
         }
 
@@ -169,27 +178,24 @@ class StoryController extends Controller
                 'id' => $story->id,
                 'title' => $story->title,
                 'cover' => $story->cover,
-                'created_story' => $story->created_at,
+                'created_at' => $story->created_at,
                 'category' => $story->category->name,
                 'images' => $story->story_images->pluck('image_path'),
                 'content' => $story->content,
-
-
             ],
             'author' => [
                 'author_id' => $story->user->id,
                 'author_name' => $story->user->username,
                 'image' => $story->user->image
             ]
-
-
         ];
 
         return response()->json([
-            'message' => 'Successfully Display Data',
+            'status' => 200,
             'success' => true,
+            'message' => 'Successfully Display Data',
             'data' => $data
-        ]);
+        ], 200);
     }
     // public function getStoryByCategory($id) {
     //     $story = Story::with('categories')->find($id);
@@ -209,90 +215,77 @@ class StoryController extends Controller
     }
 
     /**
+     * 
      * Update the specified resource in storage.
      */
+
+    //UPDATE YANG DI COBA MENGGUNAkAN RAW//////
     public function update(Request $request, $id)
     {
         $user = $request->user();
         if (!$user) {
             return response()->json([
+                'status' => 401,
+                'success' => false,
                 'message' => 'User Not Authenticated',
-                'success' => false
             ], 401);
         }
 
         $story = Story::where('id', $id)->where('user_id', $user->id)->first();
         if (!$story) {
             return response()->json([
-                'message' => 'Story not found or you do not have permission to access it',
+                'status' => 404,
                 'success' => false,
+                'message' => 'Story not found or you do not have permission to access it',
             ], 404);
         }
-
         try {
-            // Validasi input
             $validateData = $request->validate([
                 'title' => 'sometimes|string|max:255',
                 'content' => 'sometimes|string|max:1000',
                 'category_id' => 'sometimes|exists:categories,id',
-                'cover' => 'sometimes|string',  // Base64 string
+                'cover' => 'sometimes|url',
                 'images' => 'sometimes|array',
-                'images.*' => 'sometimes|string'  // Base64 string
+                'images.*' => 'url'
             ]);
-
-            // ✅ Update Story Details
             $story->update($validateData);
-
-            // ✅ Handle Cover Image (Base64)
-            if (!empty($request->cover)) {
-                // Hapus cover lama
-                if ($story->cover) {
-                    Storage::delete(str_replace('/storage/', '', $story->cover));
-                }
-
-                // Decode base64 dan simpan ke storage
-                $coverPath = $this->saveBase64Image($request->cover, 'story_covers');
-                $story->cover = Storage::url($coverPath);
+            if ($request->filled('cover')) {
+                $story->cover = $request->cover;
                 $story->save();
             }
+            if ($request->filled('images')) {
+                StoryImage::where('story_id', $story->id)->delete();
 
-            // ✅ Handle Multiple Images (Base64)
-            if (!empty($request->images)) {
-                // Hapus gambar lama
-                $oldImages = StoryImage::where('story_id', $story->id)->get();
-                foreach ($oldImages as $oldImage) {
-                    Storage::delete(str_replace('/storage/', '', $oldImage->image_path));
-                    $oldImage->delete();
-                }
-
-                // Simpan gambar baru
-                foreach ($request->images as $base64Image) {
-                    $imagePath = $this->saveBase64Image($base64Image, 'story_images');
+                foreach ($request->images as $imageUrl) {
                     StoryImage::create([
                         'story_id' => $story->id,
-                        'image_path' => Storage::url($imagePath),
+                        'image_path' => $imageUrl,
                     ]);
                 }
             }
 
             return response()->json([
-                'message' => 'Updated Successfully',
+                'status' => 200,
                 'success' => true,
-                'data' => $story
+                'message' => 'Updated Successfully',
+                'data' => $story->load('images')
             ], 200);
         } catch (ValidationException $e) {
             return response()->json([
+                'status' => 422,
+                'success' => false,
                 'message' => $e->errors(),
-                'status' => false
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
+                'status' => 500,
+                'success' => false,
                 'message' => 'Error Updating Data: ' . $e->getMessage(),
-                'status' => false
             ], 500);
         }
     }
 
+    //UPDATE DENGAN FORMDATA////
     public function updateStory(Request $request, $id)
     {
         $user = $request->user();
@@ -374,44 +367,72 @@ class StoryController extends Controller
         $story = Story::find($id);
         if (!$story) {
             return response()->json([
+                'status' => 404,
+                'success' => false,
                 'message' => 'Story Not Found',
-                'success' => false
             ], 404);
         }
         $story->delete();
         return response()->json([
+            'status' => 200,
+            'success' => true,
             'message' => 'deleted Success',
-            'success' => true
-        ]);
+
+        ], 200);
         //
     }
     public function getStoryUser(Request $request)
     {
+        $pagination = $request->query('per_page', 5);
+
         $user = $request->user();
 
         if (!$user) {
             return response()->json([
-                'message' => 'User not authenticated',
+                'status' => 401,
                 'success' => false,
+                'message' => 'User not authenticated',
             ], 401);
         }
+        $storiesQuery = Story::where('user_id', $user->id);
 
-
-        $stories = Story::where('user_id', $user->id)->get();
-
-        if ($stories->isEmpty()) {
+        $storiesPaginated = $storiesQuery->paginate($pagination);
+        if ($storiesPaginated->isEmpty()) {
             return response()->json([
-                'message' => 'No stories found for this user',
+                'status' => 404,
                 'success' => false,
+                'message' => 'No stories found for this user',
             ], 404);
         }
+        $formattedStories = $storiesPaginated->getCollection()->map(function ($stories) {
+            $story = $stories;
+
+            return [
+                'story' => [
+                    'id' => $story->id,
+                    'title' => $story->title,
+                    'cover' => $story->cover,
+                    'created_at' => $story->created_at,
+                    'category' => $story->category->name,
+                    'author' => [
+                        'author_id' => $story->user_id,
+                        'author_name' => $story->user->username,
+                        'author_image' => $story->user->image,
+                    ]
+                ],
+            ];
+        })->filter()->values();
+        $storiesPaginated->setCollection($formattedStories);
+
 
         return response()->json([
-            'message' => 'Successfully retrieved stories',
+            'status' => 200,
             'success' => true,
-            'data' => $stories,
+            'message' => 'Successfully Displayed Stories',
+            'data' => $storiesPaginated,
         ], 200);
     }
+
     public function popularStory()
     {
         try {
@@ -419,7 +440,12 @@ class StoryController extends Controller
                 $query->where('created_at', '>=', now()->subDays(100));
             }])->orderBy('bookmarks_count', 'desc')->take(10)->get();
             if ($populerStories->isEmpty()) {
-                return response()->json(['status' => 404, 'success' => false, 'message' => 'No Populer Stories Available', 'data' => []], 404);
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No Populer Stories Available',
+                    'data' => []
+                ], 404);
             }
             $data = $populerStories->map(function ($story) {
                 return [
