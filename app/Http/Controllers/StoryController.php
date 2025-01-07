@@ -433,12 +433,14 @@ class StoryController extends Controller
         ], 200);
     }
 
-    public function popularStory()
+    public function popularStory(Request $request)
     {
         try {
+            $pagination = $request->query('per_page') ?? 10;
             $populerStories = Story::withCount(['bookmarks' => function ($query) {
                 $query->where('created_at', '>=', now()->subDays(100));
-            }])->orderBy('bookmarks_count', 'desc')->take(10)->get();
+            }])->orderBy('bookmarks_count', 'desc')->paginate($pagination);
+
             if ($populerStories->isEmpty()) {
                 return response()->json([
                     'status' => 404,
@@ -447,7 +449,7 @@ class StoryController extends Controller
                     'data' => []
                 ], 404);
             }
-            $data = $populerStories->map(function ($story) {
+            $data = $populerStories->getCollection()->map(function ($story) {
                 return [
                     'id' => $story->id,
                     'title' => $story->title,
@@ -457,11 +459,12 @@ class StoryController extends Controller
                     'created_at' => $story->created_at->format('Y-m-d H:i:s'),
                 ];
             });
+            $populerStories->setCollection($data);
             return response()->json([
                 'status' => 200,
                 'success' => true,
                 'message' => 'Populer Stories retrived successfully',
-                'data' => $data
+                'data' => $populerStories
             ], 200);
         } catch (\Exception $e) {
             Log::error('Error fetching popular stories:', ['error' => $e->getMessage()]);
