@@ -51,7 +51,7 @@ Route::post('/upload-file', [UploadFileController::class, 'uploadFile']);
 Route::get('/stories/popular', [StoryController::class, 'popularStory']);
 Route::get('/stories/newest', [StoryController::class, 'newest']);
 Route::get('/story', [StoryController::class, 'index'])->name('index');
-Route::get('stories/similiar/{id}', [StoryController::class, 'similiarStory']);
+Route::get('stories/similar/{id}', [StoryController::class, 'similarStory']);
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //     return $request->user();
 // });

@@ -528,7 +528,7 @@ class StoryController extends Controller
             ], 500);
         }
     }
-    public function similiarStory($id)
+    public function similarStory($id)
     {
         try {
             $currentStory = Story::with('category')->find($id);
@@ -541,13 +541,13 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $similiarStories = Story::with(['category', 'user'])->where('category_id', $currentStory->category_id)
+            $similarStories = Story::with(['category', 'user'])->where('category_id', $currentStory->category_id)
                 ->where('id', '!=', $currentStory->id)
                 ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get();
 
-            if ($similiarStories->isEmpty()) {
+            if ($similarStories->isEmpty()) {
                 return response()->json([
                     'status' => 404,
                     'success' => false,
@@ -555,7 +555,7 @@ class StoryController extends Controller
                     'data' => []
                 ], 404);
             }
-            $data = $similiarStories->map(function ($story) {
+            $data = $similarStories->map(function ($story) {
                 return [
                     'id' => $story->id,
                     'title' => $story->title,
