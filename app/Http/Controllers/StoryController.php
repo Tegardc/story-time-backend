@@ -163,8 +163,7 @@ class StoryController extends Controller
      */
     public function show($id)
     {
-        $story = Story::with('story_images')->find($id);
-
+        $story = Story::with('story_images', 'category', 'user')->find($id);
         if (!$story) {
             return response()->json([
                 'status' => 404,
@@ -174,20 +173,17 @@ class StoryController extends Controller
         }
 
         $data = [
-            'story' => [
-                'id' => $story->id,
-                'title' => $story->title,
-                'cover' => $story->cover,
-                'created_at' => $story->created_at,
-                'category' => $story->category->name,
-                'images' => $story->story_images->pluck('image_path'),
-                'content' => $story->content,
-            ],
-            'author' => [
-                'author_id' => $story->user->id,
-                'author_name' => $story->user->username,
-                'image' => $story->user->image
-            ]
+            'id' => $story->id,
+            'title' => $story->title,
+            'cover' => $story->cover,
+            'created_at' => $story->created_at,
+            'category' => $story->category->name,
+            'images' => $story->story_images->pluck('image_path'),
+            'content' => $story->content,
+            'author_id' => $story->user->id,
+            'author_name' => $story->user->username,
+            'image' => $story->user->image
+
         ];
 
         return response()->json([
@@ -362,7 +358,7 @@ class StoryController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $story = Story::find($id);
         if (!$story) {
@@ -371,6 +367,14 @@ class StoryController extends Controller
                 'success' => false,
                 'message' => 'Story Not Found',
             ], 404);
+        }
+        $isYourStory = $request->user()->id;
+        if ($story->user_id !== $isYourStory) {
+            return response([
+                'status' => 403,
+                'success' => false,
+                'message' => 'これはきみのしょうせつじゃないです'
+            ], 403);
         }
         $story->delete();
         return response()->json([
@@ -406,20 +410,17 @@ class StoryController extends Controller
         }
         $formattedStories = $storiesPaginated->getCollection()->map(function ($stories) {
             $story = $stories;
-
             return [
-                'story' => [
-                    'id' => $story->id,
-                    'title' => $story->title,
-                    'cover' => $story->cover,
-                    'created_at' => $story->created_at,
-                    'category' => $story->category->name,
-                    'author' => [
-                        'author_id' => $story->user_id,
-                        'author_name' => $story->user->username,
-                        'author_image' => $story->user->image,
-                    ]
-                ],
+                'id' => $story->id,
+                'title' => $story->title,
+                'cover' => $story->cover,
+                'created_at' => $story->created_at,
+                'category' => $story->category->name,
+                'author_id' => $story->user_id,
+                'author_name' => $story->user->username,
+                'author_image' => $story->user->image,
+
+
             ];
         })->filter()->values();
         $storiesPaginated->setCollection($formattedStories);
@@ -437,7 +438,7 @@ class StoryController extends Controller
     {
         try {
             $pagination = $request->query('per_page') ?? 10;
-            $populerStories = Story::withCount(['bookmarks' => function ($query) {
+            $populerStories = Story::with(['user', 'category'])->withCount(['bookmarks' => function ($query) {
                 $query->where('created_at', '>=', now()->subDays(100));
             }])->orderBy('bookmarks_count', 'desc')->paginate($pagination);
 
@@ -457,6 +458,11 @@ class StoryController extends Controller
                     'cover' => $story->cover,
                     'bookmark_count' => $story->bookmarks_count,
                     'created_at' => $story->created_at->format('Y-m-d H:i:s'),
+                    'category' => $story->category ? $story->category->name : null,
+                    'author_id' => $story->user ? $story->user->id : null,
+                    'author_name' => $story->user ? $story->user->name : null,
+                    'author_image' => $story->user ? $story->user->image : null
+
                 ];
             });
             $populerStories->setCollection($data);
@@ -511,6 +517,64 @@ class StoryController extends Controller
                 'success' => true,
                 'message' => 'Newest Stories retrieved successfully',
                 'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching newest stories:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+                'data' => [],
+            ], 500);
+        }
+    }
+    public function similiarStory($id)
+    {
+        try {
+            $currentStory = Story::with('category')->find($id);
+
+            if (!$currentStory) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'Story Not Found',
+                ], 404);
+            }
+
+            $similiarStories = Story::with(['category', 'user'])->where('category_id', $currentStory->category_id)
+                ->where('id', '!=', $currentStory->id)
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get();
+
+            if ($similiarStories->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'Similiar Story is Not Found',
+                    'data' => []
+                ], 404);
+            }
+            $data = $similiarStories->map(function ($story) {
+                return [
+                    'id' => $story->id,
+                    'title' => $story->title,
+                    'content' => $story->content,
+                    'cover' => $story->cover,
+                    'updated_at' => $story->updated_at->format('Y-m-d H:i:s'),
+                    'created_at' => $story->created_at->format('Y-m-d H:i:s'),
+                    'category' => $story->category->name,
+                    'author_id' => $story->user->id,
+                    'author_name' => $story->user->name,
+                    'author_image' => $story->user->image
+                ];
+            });
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Success Showing Similiar Story ',
+                'data' => $data
+
             ], 200);
         } catch (\Exception $e) {
             Log::error('Error fetching newest stories:', ['error' => $e->getMessage()]);

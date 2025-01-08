@@ -102,11 +102,9 @@ class CategoryController extends Controller
                     'content' => $story->content,
                     'cover' => $story->cover,
                     'created_at' => $story->created_at,
-                    'author' => $story->user ? [
-                        'author_id' => $story->user->id,
-                        'author_name' => $story->user->username,
-                        'author_image' => $story->user->image,
-                    ] : null,
+                    'author_id' => $story->user->id,
+                    'author_name' => $story->user->username,
+                    'author_image' => $story->user->image,
                 ];
             });
 
