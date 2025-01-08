@@ -479,7 +479,7 @@ class StoryController extends Controller
     public function newest()
     {
         try {
-            $newestStories = Story::orderBy('created_at', 'desc')
+            $newestStories = Story::with(['category', 'user'])->orderBy('created_at', 'desc')
                 ->take(10)
                 ->get();
 
@@ -499,6 +499,10 @@ class StoryController extends Controller
                     'cover' => $story->cover,
                     'updated_at' => $story->updated_at->format('Y-m-d H:i:s'),
                     'created_at' => $story->created_at->format('Y-m-d H:i:s'),
+                    'category' => $story->category->name,
+                    'author_id' => $story->user->id,
+                    'author_name' => $story->user->name,
+                    'author_image' => $story->user->image
                 ];
             });
 

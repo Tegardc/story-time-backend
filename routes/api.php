@@ -29,7 +29,7 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
     Route::apiResource('story', StoryController::class);
     Route::post('/story/{id}', [StoryController::class, 'update'])->name('update');
     Route::put('/stories/{id}', [StoryController::class, 'updateStory']);
-    Route::get('/story', [StoryController::class, 'index'])->name('index');
+
     Route::get('/story-user', [StoryController::class, 'getStoryUser']);
     Route::get('/story/{id}', [StoryController::class, 'show'])->name('show');
 
@@ -47,9 +47,10 @@ Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'regis'])->name('regis');
 Route::post('/logout', [UserController::class, 'logout'])->name('user.logout')->middleware(middleware: 'auth:sanctum');
 Route::post('/upload', [UploadFileController::class, 'upload']);
+Route::post('/upload-file', [UploadFileController::class, 'uploadFile']);
 Route::get('/stories/popular', [StoryController::class, 'popularStory']);
 Route::get('/stories/newest', [StoryController::class, 'newest']);
-
+Route::get('/story', [StoryController::class, 'index'])->name('index');
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //     return $request->user();
 // });
