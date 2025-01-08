@@ -38,6 +38,11 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
     Route::apiResource('bookmark', BookmarkController::class);
     Route::get('/bookmark-user', [BookmarkController::class, 'show']);
     Route::post('/bookmark', [BookmarkController::class, 'bookmark']);
+    Route::delete('/stories/{id}', [StoryController::class, 'deleteStory']);
+    Route::post('/stories/{id}/restore', [StoryController::class, 'restore']);
+    Route::get('/stories/trashed', [StoryController::class, 'trashedStories']);
+
+
     // Route::get('/story-user', [StoryController::class, 'getStoryUser']);
     // Route::delete('/story/{id}', [StoryController::class, 'destroy']);
 
@@ -52,6 +57,7 @@ Route::get('/stories/popular', [StoryController::class, 'popularStory']);
 Route::get('/stories/newest', [StoryController::class, 'newest']);
 Route::get('/story', [StoryController::class, 'index'])->name('index');
 Route::get('stories/similar/{id}', [StoryController::class, 'similarStory']);
+
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //     return $request->user();
 // });

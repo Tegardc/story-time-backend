@@ -586,4 +586,106 @@ class StoryController extends Controller
             ], 500);
         }
     }
+    public function deleteStory($id)
+    {
+        try {
+            $user = auth()->user(); // Mendapatkan pengguna yang sedang login
+            $story = Story::where('id', $id)->where('user_id', $user->id)->first();
+
+            if (!$story) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'Story not found or you do not have permission to delete this story',
+                ], 404);
+            }
+
+            // Lakukan soft delete
+            $story->delete();
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Story successfully moved to trash',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error deleting story:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+    public function restore($id)
+    {
+        try {
+            $user = auth()->user(); // Mendapatkan pengguna yang sedang login
+            $story = Story::onlyTrashed()->where('id', $id)->where('user_id', $user->id)->first();
+
+            if (!$story) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'Story not found in trash or you do not have permission to restore this story',
+                ], 404);
+            }
+
+            // Pulihkan data
+            $story->restore();
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Story successfully restored',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error restoring story:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+    public function trashedStories()
+    {
+        try {
+            $user = auth()->user(); // Mendapatkan pengguna yang sedang login
+            $stories = Story::onlyTrashed()->where('user_id', $user->id)->get();
+
+            if ($stories->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No trashed stories found',
+                    'data' => [],
+                ], 404);
+            }
+
+            $data = $stories->map(function ($story) {
+                return [
+                    'id' => $story->id,
+                    'title' => $story->title,
+                    'content' => $story->content,
+                    'deleted_at' => $story->deleted_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Trashed stories retrieved successfully',
+                'data' => $data,
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error fetching trashed stories:', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+                'data' => [],
+            ], 500);
+        }
+    }
 }

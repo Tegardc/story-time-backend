@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Story extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
     protected $fillable = [
         'title',
         'content',
@@ -36,4 +37,5 @@ class Story extends Model
     {
         return $this->hasMany(StoryImage::class);
     }
+    protected $dates = ['deleted_at'];
 }
