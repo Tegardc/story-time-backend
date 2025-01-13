@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('stories', function (Blueprint $table) {
             $table->id();
             $table->string('title')->unique();
-            $table->string('content');
+            $table->text('content');
             $table->timestamps();
         });
     }

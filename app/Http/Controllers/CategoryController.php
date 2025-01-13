@@ -133,6 +133,55 @@ class CategoryController extends Controller
             ], 500);
         }
     }
+    public function showStoryByCategory(Request $request)
+    {
+        try {
+            $categories = Category::with(['stories.user' => function ($query) {
+                $query->take(3);
+            }])->get();
+
+            if ($categories->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No categories found',
+                ], 404);
+            }
+            $data = $categories->map(function ($category) {
+                return [
+                    'id' => $category->id,
+                    'category_name' => $category->name,
+                    'stories' => $category->stories->take(3)->map(function ($story) {
+                        return [
+                            'id' => $story->id,
+                            'title' => $story->title,
+                            'content' => $story->content,
+                            'cover' => $story->cover,
+                            'created_at' => $story->created_at,
+                            'author_id' => $story->user->id,
+                            'author_name' => $story->user->username,
+                            'author_image' => $story->user->image,
+                        ];
+                    }),
+                ];
+            });
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Categories and stories retrieved successfully',
+                'data' => $data,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'Error retrieving categories and stories',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
 

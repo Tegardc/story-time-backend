@@ -27,6 +27,24 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Fantasy'
             ],
+            [
+                'name' => 'Comedy'
+            ],
+            [
+                'name' => 'Adventure'
+            ],
+            [
+                'name' => 'Fiction'
+            ],
+            [
+                'name' => 'Drama'
+            ],
+            [
+                'name' => 'Heartfelt'
+            ],
+            [
+                'name' => 'Mystery'
+            ],
         ];
         foreach ($data as $category) {
             Category::insert($category);
