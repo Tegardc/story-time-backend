@@ -64,7 +64,8 @@ Route::get('stories/similar/{id}', [StoryController::class, 'similarStory']);
 // Route::post('/change-password', [UserController::class, 'changePassword']);
 
 // Route::post('/upload-file', [UploadFileController::class, 'uploadFile']);
-// Route::get('/category', [CategoryController::class, 'index'])->name('index');
-// Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
-// Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
-// Route::post('/category', [CategoryController::class, 'store'])->name('store');
+Route::get('/category', [CategoryController::class, 'index'])->name('index');
+Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
+Route::get('/category-story', [CategoryController::class, 'showStoryByCategory'])->name('showStoryByCategory');
+Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
+Route::post('/category', [CategoryController::class, 'store'])->name('store');
