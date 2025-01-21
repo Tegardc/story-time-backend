@@ -11,10 +11,10 @@ class Bookmark extends Model
     use HasFactory;
     protected $fillable = ['user_id', 'story_id'];
 
-    public function bookmarks()
-    {
-        return $this->hasMany(Bookmark::class);
-    }
+    // public function bookmarks()
+    // {
+    //     return $this->hasMany(Bookmark::class);
+    // }
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'id');

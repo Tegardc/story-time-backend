@@ -31,7 +31,7 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
     Route::put('/stories/{id}', [StoryController::class, 'updateStory']);
 
     Route::get('/story-user', [StoryController::class, 'getStoryUser']);
-    Route::get('/story/{id}', [StoryController::class, 'show'])->name('show');
+
 
 
     //API BOOKMARK??
@@ -47,6 +47,7 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
     // Route::delete('/story/{id}', [StoryController::class, 'destroy']);
 
 });
+Route::get('/story/{id}', [StoryController::class, 'show'])->name('show');
 Route::apiResource('category', CategoryController::class);
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'regis'])->name('regis');
