@@ -70,3 +70,10 @@ Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
 Route::get('/category-story', [CategoryController::class, 'showStoryByCategory'])->name('showStoryByCategory');
 Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
 Route::post('/category', [CategoryController::class, 'store'])->name('store');
+
+Route::get('/health' . function () {
+    return response()->json([
+        'message' => 'Server jalan bro',
+        'success' => true
+    ], 200);
+});
