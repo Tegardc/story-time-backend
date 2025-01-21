@@ -238,7 +238,7 @@ class StoryController extends Controller
         try {
             $validateData = $request->validate([
                 'title' => 'sometimes|string|max:255',
-                'content' => 'sometimes|string|max:1000',
+                'content' => 'sometimes|string',
                 'category_id' => 'sometimes|exists:categories,id',
                 'cover' => 'sometimes|url',
                 'images' => 'sometimes|array',
