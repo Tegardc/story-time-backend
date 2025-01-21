@@ -486,7 +486,7 @@ class StoryController extends Controller
     {
         try {
             $newestStories = Story::with(['category', 'user'])->orderBy('created_at', 'desc')
-                ->take(10)
+                // ->take(10)
                 ->get();
 
             if ($newestStories->isEmpty()) {
