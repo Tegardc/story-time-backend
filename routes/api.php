@@ -47,7 +47,7 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
     // Route::delete('/story/{id}', [StoryController::class, 'destroy']);
 
 });
-Route::get('/story/{id}', [StoryController::class, 'show'])->name('show');
+
 Route::apiResource('category', CategoryController::class);
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'regis'])->name('regis');
@@ -70,7 +70,7 @@ Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
 Route::get('/category-story', [CategoryController::class, 'showStoryByCategory']);
 Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
 Route::post('/category', [CategoryController::class, 'store'])->name('store');
-
+Route::get('/story/detail/{id}', [StoryController::class, 'show']);
 Route::get('/health', function () {
     return response()->json([
         'message' => 'Server jalan bro',
