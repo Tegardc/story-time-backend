@@ -158,9 +158,9 @@ class CategoryController extends Controller
                             'content' => $story->content,
                             'cover' => $story->cover,
                             'created_at' => $story->created_at,
-                            'author_id' => $story->user->id,
-                            'author_name' => $story->user->username,
-                            'author_image' => $story->user->image,
+                            'author_id' => optional($story->user)->id, // Cegah error jika user null
+                            'author_name' => optional($story->user)->username, // Gunakan optional()
+                            'author_image' => optional($story->user)->image,
                         ];
                     }),
                 ];
