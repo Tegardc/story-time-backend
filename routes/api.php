@@ -71,7 +71,7 @@ Route::get('/category-story', [CategoryController::class, 'showStoryByCategory']
 Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
 Route::post('/category', [CategoryController::class, 'store'])->name('store');
 
-Route::get('/health' . function () {
+Route::get('/health', function () {
     return response()->json([
         'message' => 'Server jalan bro',
         'success' => true
