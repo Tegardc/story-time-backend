@@ -60,7 +60,7 @@ class StoryController extends Controller
         try {
             $validateData = $request->validate([
                 'title' => 'required|unique:stories,title',
-                'content' => 'required|text',
+                'content' => 'required|string',
                 'category_id' => 'required|exists:categories,id',
                 'cover' => 'required|url',
                 'images' => 'required|array',
