@@ -282,81 +282,81 @@ class StoryController extends Controller
     }
 
     //UPDATE DENGAN FORMDATA////
-    public function updateStory(Request $request, $id)
-    {
-        $user = $request->user();
-        if (!$user) {
-            return response()->json([
-                'message' => 'User Not Authenticated',
-                'success' => false
-            ], 401);
-        }
+    // public function updateStory(Request $request, $id)
+    // {
+    //     $user = $request->user();
+    //     if (!$user) {
+    //         return response()->json([
+    //             'message' => 'User Not Authenticated',
+    //             'success' => false
+    //         ], 401);
+    //     }
 
-        $story = Story::where('id', $id)->where('user_id', $user->id)->first();
-        if (!$story) {
-            return response()->json([
-                'message' => 'Story not found or you do not have permission to access it',
-                'success' => false,
-            ], 404);
-        }
+    //     $story = Story::where('id', $id)->where('user_id', $user->id)->first();
+    //     if (!$story) {
+    //         return response()->json([
+    //             'message' => 'Story not found or you do not have permission to access it',
+    //             'success' => false,
+    //         ], 404);
+    //     }
 
-        try {
-            Log::info($request->all());
-            $validateData = $request->validate([
-                'title' => 'sometimes|string|max:255',
-                'content' => 'sometimes|string|max:1000',
-                'category_id' => 'sometimes|exists:categories,id',
-                'cover' => 'sometimes|image|mimes:jpg,png,svg,gif,webp|max:2048',
-                'images.*' => 'sometimes|image|mimes:jpg,png,svg,gif,webp|max:2048'
-            ]);
+    //     try {
+    //         Log::info($request->all());
+    //         $validateData = $request->validate([
+    //             'title' => 'sometimes|string|max:255',
+    //             'content' => 'sometimes|string|max:1000',
+    //             'category_id' => 'sometimes|exists:categories,id',
+    //             'cover' => 'sometimes|image|mimes:jpg,png,svg,gif,webp|max:2048',
+    //             'images.*' => 'sometimes|image|mimes:jpg,png,svg,gif,webp|max:2048'
+    //         ]);
 
-            $story->update($validateData);
-            if ($request->hasFile('cover')) {
-                Log::info('Cover file received');
-                if ($story->cover) {
-                    $oldCoverPath = str_replace('/storage/', '', $story->cover);
-                    Log::info('Deleting old cover: ' . $oldCoverPath);
-                    Storage::delete($oldCoverPath);
-                }
-                $coverPath = $request->file('cover')->store('story_covers', 'public');
-                $story->cover = Storage::url($coverPath);
-                $story->save();
-                Log::info('Updated story cover: ' . $story->cover);
-            }
-            if ($request->hasFile('images')) {
-                $oldImages = StoryImage::where('story_id', $story->id)->get();
-                foreach ($oldImages as $oldImage) {
-                    $oldImagePath = str_replace('/storage/', '', $oldImage->image_path);
-                    Log::info('Deleting old image: ' . $oldImagePath);
-                    Storage::delete($oldImagePath);
-                    $oldImage->delete();
-                }
-                foreach ($request->file('images') as $image) {
-                    $imagePath = $image->store('story_images', 'public');
-                    StoryImage::create([
-                        'story_id' => $story->id,
-                        'image_path' => Storage::url($imagePath),
-                    ]);
-                }
-            }
+    //         $story->update($validateData);
+    //         if ($request->hasFile('cover')) {
+    //             Log::info('Cover file received');
+    //             if ($story->cover) {
+    //                 $oldCoverPath = str_replace('/storage/', '', $story->cover);
+    //                 Log::info('Deleting old cover: ' . $oldCoverPath);
+    //                 Storage::delete($oldCoverPath);
+    //             }
+    //             $coverPath = $request->file('cover')->store('story_covers', 'public');
+    //             $story->cover = Storage::url($coverPath);
+    //             $story->save();
+    //             Log::info('Updated story cover: ' . $story->cover);
+    //         }
+    //         if ($request->hasFile('images')) {
+    //             $oldImages = StoryImage::where('story_id', $story->id)->get();
+    //             foreach ($oldImages as $oldImage) {
+    //                 $oldImagePath = str_replace('/storage/', '', $oldImage->image_path);
+    //                 Log::info('Deleting old image: ' . $oldImagePath);
+    //                 Storage::delete($oldImagePath);
+    //                 $oldImage->delete();
+    //             }
+    //             foreach ($request->file('images') as $image) {
+    //                 $imagePath = $image->store('story_images', 'public');
+    //                 StoryImage::create([
+    //                     'story_id' => $story->id,
+    //                     'image_path' => Storage::url($imagePath),
+    //                 ]);
+    //             }
+    //         }
 
-            return response()->json([
-                'message' => 'Updated Successfully',
-                'success' => true,
-                'data' => $story
-            ], 200);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => $e->errors(),
-                'status' => false
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error Updating Data: ' . $e->getMessage(),
-                'status' => false
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'message' => 'Updated Successfully',
+    //             'success' => true,
+    //             'data' => $story
+    //         ], 200);
+    //     } catch (ValidationException $e) {
+    //         return response()->json([
+    //             'message' => $e->errors(),
+    //             'status' => false
+    //         ], 422);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'message' => 'Error Updating Data: ' . $e->getMessage(),
+    //             'status' => false
+    //         ], 500);
+    //     }
+    // }
 
     public function destroy(Request $request, $id)
     {
