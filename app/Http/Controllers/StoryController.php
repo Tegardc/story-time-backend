@@ -387,8 +387,6 @@ class StoryController extends Controller
     }
     public function getStoryUser(Request $request)
     {
-        $pagination = $request->query('per_page', 5);
-
         $user = $request->user();
 
         if (!$user) {
@@ -398,41 +396,87 @@ class StoryController extends Controller
                 'message' => 'User not authenticated',
             ], 401);
         }
-        $storiesQuery = Story::where('user_id', $user->id);
 
-        $storiesPaginated = $storiesQuery->paginate($pagination);
-        if ($storiesPaginated->isEmpty()) {
+        $stories = Story::where('user_id', $user->id)->with('category', 'user')->get();
+
+        if ($stories->isEmpty()) {
             return response()->json([
                 'status' => 404,
                 'success' => false,
                 'message' => 'No stories found for this user',
+                'data' => [],
             ], 404);
         }
-        $formattedStories = $storiesPaginated->getCollection()->map(function ($stories) {
-            $story = $stories;
+
+        $formattedStories = $stories->map(function ($story) {
             return [
                 'id' => $story->id,
                 'title' => $story->title,
                 'cover' => $story->cover,
-                'created_at' => $story->created_at,
-                'category' => $story->category->name,
+                'created_at' => $story->created_at->format('Y-m-d H:i:s'),
+                'category' => $story->category->name ?? null,
                 'author_id' => $story->user_id,
-                'author_name' => $story->user->username,
-                'author_image' => $story->user->image,
-
-
+                'author_name' => $story->user->username ?? null,
+                'author_image' => $story->user->image ?? null,
             ];
-        })->filter()->values();
-        $storiesPaginated->setCollection($formattedStories);
-
+        });
 
         return response()->json([
             'status' => 200,
             'success' => true,
             'message' => 'Successfully Displayed Stories',
-            'data' => $storiesPaginated,
+            'data' => $formattedStories,
         ], 200);
     }
+
+    // public function getStoryUser(Request $request)
+    // {
+    //     $pagination = $request->query('per_page', 5);
+
+    //     $user = $request->user();
+
+    //     if (!$user) {
+    //         return response()->json([
+    //             'status' => 401,
+    //             'success' => false,
+    //             'message' => 'User not authenticated',
+    //         ], 401);
+    //     }
+    //     $storiesQuery = Story::where('user_id', $user->id);
+
+    //     $storiesPaginated = $storiesQuery->paginate($pagination);
+    //     if ($storiesPaginated->isEmpty()) {
+    //         return response()->json([
+    //             'status' => 404,
+    //             'success' => false,
+    //             'message' => 'No stories found for this user',
+    //         ], 404);
+    //     }
+    //     $formattedStories = $storiesPaginated->getCollection()->map(function ($stories) {
+    //         $story = $stories;
+    //         return [
+    //             'id' => $story->id,
+    //             'title' => $story->title,
+    //             'cover' => $story->cover,
+    //             'created_at' => $story->created_at,
+    //             'category' => $story->category->name,
+    //             'author_id' => $story->user_id,
+    //             'author_name' => $story->user->username,
+    //             'author_image' => $story->user->image,
+
+
+    //         ];
+    //     })->filter()->values();
+    //     $storiesPaginated->setCollection($formattedStories);
+
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'success' => true,
+    //         'message' => 'Successfully Displayed Stories',
+    //         'data' => $storiesPaginated,
+    //     ], 200);
+    // }
 
     public function popularStory(Request $request)
     {
