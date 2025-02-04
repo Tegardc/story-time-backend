@@ -397,7 +397,7 @@ class StoryController extends Controller
             ], 401);
         }
 
-        $stories = Story::where('user_id', $user->id)->with('category', 'user')->get();
+        $stories = Story::where('user_id', $user->id)->with('category', 'user')->orderBy('created_at', 'desc')->get();
 
         if ($stories->isEmpty()) {
             return response()->json([
