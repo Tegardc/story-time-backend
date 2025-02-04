@@ -20,22 +20,34 @@ class StoryController extends Controller
     public function index(Request $request)
     {
         $pagination = $request->query('page') ?? 10;
-        $category = request()->query('category') ?? null;
+        $category = $request->query('category') ?? null;
         $story = $request->query('story') ?? null;
+        $sortBy = $request->query('sort_by') ?? 'created_at'; // Default sorting berdasarkan 'created_at'
+        $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc'; // Default DESC jika tidak diatur
+
         $query = Story::query();
+
         if ($story) {
             $query->where('title', 'like', "%$story%");
         }
+
         if ($category) {
             $query->whereHas('category', function ($q) use ($category) {
                 $q->where('name', 'like', "%$category%");
             });
         }
+
         $query->with(['category']);
+
+        // Tambahkan sorting berdasarkan parameter yang dikirim
+        $query->orderBy($sortBy, $order);
+
         $stories = $query->paginate($pagination);
+
         if ($stories->isEmpty() && $stories->currentPage() > $stories->lastPage()) {
             $stories = $query->paginate($pagination, ['*'], 'page', $stories->lastPage());
         }
+
         return response()->json([
             'status' => 200,
             'success' => true,
@@ -43,6 +55,31 @@ class StoryController extends Controller
             'data' => $stories
         ], 200);
     }
+    //     $pagination = $request->query('page') ?? 10;
+    //     $category = request()->query('category') ?? null;
+    //     $story = $request->query('story') ?? null;
+    //     $query = Story::query();
+    //     if ($story) {
+    //         $query->where('title', 'like', "%$story%");
+    //     }
+    //     if ($category) {
+    //         $query->whereHas('category', function ($q) use ($category) {
+    //             $q->where('name', 'like', "%$category%");
+    //         });
+    //     }
+    //     $query->with(['category']);
+    //     $stories = $query->paginate($pagination);
+    //     if ($stories->isEmpty() && $stories->currentPage() > $stories->lastPage()) {
+    //         $stories = $query->paginate($pagination, ['*'], 'page', $stories->lastPage());
+    //     }
+    //     return response()->json([
+    //         'status' => 200,
+    //         'success' => true,
+    //         'message' => 'Successfully Display Data',
+    //         'data' => $stories
+    //     ], 200);
+    // }
+
 
 
     public function create()
