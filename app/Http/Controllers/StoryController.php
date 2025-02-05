@@ -450,6 +450,7 @@ class StoryController extends Controller
                 'id' => $story->id,
                 'title' => $story->title,
                 'cover' => $story->cover,
+                'content' => $story->content,
                 'created_at' => $story->created_at->format('Y-m-d H:i:s'),
                 'category' => $story->category->name ?? null,
                 'author_id' => $story->user_id,
