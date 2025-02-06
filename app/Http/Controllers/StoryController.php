@@ -22,7 +22,7 @@ class StoryController extends Controller
         $category = $request->query('category') ?? null;
         $story = $request->query('story') ?? null;
         $sortBy = $request->query('sort_by') ?? 'created_at';
-        $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc';
+        $order = strtolower($request->query('order')) === 'asc' ?: 'desc';
 
         $query = Story::query();
 
