@@ -22,7 +22,7 @@ class StoryController extends Controller
         $category = $request->query('category') ?? null;
         $story = $request->query('story') ?? null;
         $sortBy = $request->query('sort_by') ?? 'created_at';
-        $order = strtolower($request->query('order')) === 'asc' ?: 'desc';
+        $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc';
 
         $query = Story::query();
 
@@ -39,7 +39,7 @@ class StoryController extends Controller
         $query->with(['category']);
 
         // Tambahkan sorting berdasarkan parameter yang dikirim
-        $query->orderBy($sortBy, $order);
+        $query->orderByRaw("LOWER($sortBy) $order");
 
         // Ambil semua data tanpa pagination
         $stories = $query->get();
