@@ -13,6 +13,7 @@ class StoryPolicy
      */
     public function viewAny(User $user): bool
     {
+        return true;
         //
     }
 
@@ -21,6 +22,7 @@ class StoryPolicy
      */
     public function view(User $user, Story $story): bool
     {
+        return true;
         //
     }
 
@@ -29,6 +31,7 @@ class StoryPolicy
      */
     public function create(User $user): bool
     {
+        return auth()->check();
         //
     }
 
@@ -37,6 +40,7 @@ class StoryPolicy
      */
     public function update(User $user, Story $story): bool
     {
+        return $user->id === $story->user_id;
         //
     }
 
@@ -45,6 +49,7 @@ class StoryPolicy
      */
     public function delete(User $user, Story $story): bool
     {
+        return $user->id === $story->user_id;
         //
     }
 
@@ -53,6 +58,7 @@ class StoryPolicy
      */
     public function restore(User $user, Story $story): bool
     {
+        return $user->id === $story->user_id;
         //
     }
 
@@ -61,6 +67,7 @@ class StoryPolicy
      */
     public function forceDelete(User $user, Story $story): bool
     {
+        return $user->id === $story->user_id;
         //
     }
 }

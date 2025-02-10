@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Story;
 use App\Models\StoryImage;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -19,38 +21,76 @@ class StoryController extends Controller
      */
     public function index(Request $request)
     {
-        $category = $request->query('category') ?? null;
-        $story = $request->query('story') ?? null;
-        $sortBy = $request->query('sort_by') ?? 'created_at';
-        $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc';
+        try {
+            $category = $request->query('category') ?? null;
+            $story = $request->query('story') ?? null;
+            $sortBy = $request->query('sort_by', 'created_at');
+            $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc';
 
-        $query = Story::query();
+            $query = Story::query()->with(['category', 'user']);
 
-        if ($story) {
-            $query->where('title', 'like', "%$story%");
-        }
+            if ($story) {
+                $query->where('title', 'like', "%$story%");
+            }
 
-        if ($category) {
-            $query->whereHas('category', function ($q) use ($category) {
-                $q->where('name', 'like', "%$category%");
+            if ($category) {
+                $query->whereHas('category', function ($q) use ($category) {
+                    $q->where('name', 'like', "%$category%");
+                });
+            }
+
+            // Validasi agar sort_by hanya bisa pakai kolom yang valid
+            $validSortColumns = ['id', 'title', 'created_at'];
+            if (!in_array($sortBy, $validSortColumns)) {
+                $sortBy = 'created_at';
+            }
+
+            $query->orderBy($sortBy, $order);
+
+            // Ambil semua data tanpa pagination
+            $stories = $query->get();
+
+            if ($stories->isEmpty()) {
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No stories found',
+                    'data' => [],
+                ], 404);
+            }
+
+            // Format hasil data agar sama dengan getStoryUser()
+            $formattedStories = $stories->map(function ($story) {
+                return [
+                    'id' => $story->id,
+                    'title' => $story->title,
+                    'cover' => $story->cover,
+                    'content' => $story->content,
+                    'created_at' => $story->created_at->format('Y-m-d H:i:s'),
+                    'category' => $story->category->name ?? null,
+                    'author_id' => $story->user_id,
+                    'author_name' => $story->user->username ?? null,
+                    'author_image' => $story->user->image ?? null,
+                ];
             });
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Successfully Displayed Stories',
+                'data' => $formattedStories,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'Error retrieving stories',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        $query->with(['category']);
-
-        // Tambahkan sorting berdasarkan parameter yang dikirim
-        $query->orderByRaw("LOWER($sortBy) $order");
-
-        // Ambil semua data tanpa pagination
-        $stories = $query->get();
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'Successfully Display Data',
-            'data' => $stories
-        ], 200);
     }
+
+
 
     // public function index(Request $request)
     // {
@@ -290,22 +330,25 @@ class StoryController extends Controller
     public function update(Request $request, $id)
     {
         $user = $request->user();
-        if (!$user) {
-            return response()->json([
-                'status' => 401,
-                'success' => false,
-                'message' => 'User Not Authenticated',
-            ], 401);
-        }
-
-        $story = Story::where('id', $id)->where('user_id', $user->id)->first();
-        if (!$story) {
-            return response()->json([
-                'status' => 404,
-                'success' => false,
-                'message' => 'Story not found or you do not have permission to access it',
-            ], 404);
-        }
+        abort_if(!$user, 401, 'User Not Aunthenticated');
+        // if (!$user) {
+        //     return response()->json([
+        //         'status' => 401,
+        //         'success' => false,
+        //         'message' => 'User Not Authenticated',
+        //     ], 401);
+        // }
+        $story = Story::findOrFail($id);
+        $this->authorize('update', $story);
+        // $story = Story::where('id', $id)->where('user_id', $user->id)->first();
+        // abort_if(!$user)
+        // if (!$story) {
+        //     return response()->json([
+        //         'status' => 404,
+        //         'success' => false,
+        //         'message' => 'Story not found or you do not have permission to access it',
+        //     ], 404);
+        // }
         try {
             $validateData = $request->validate([
                 'title' => 'sometimes|string|max:255',
@@ -316,20 +359,30 @@ class StoryController extends Controller
                 'images.*' => 'url'
             ]);
             $story->update($validateData);
-            if ($request->filled('cover')) {
-                $story->cover = $request->cover;
-                $story->save();
+            if ($request->has('cover')) {
+                $story->update(['cover' => $request->cover]);
             }
-            if ($request->filled('images')) {
+            if ($request->has('images')) {
                 StoryImage::where('story_id', $story->id)->delete();
 
-                foreach ($request->images as $imageUrl) {
-                    StoryImage::create([
-                        'story_id' => $story->id,
-                        'image_path' => $imageUrl,
-                    ]);
-                }
+                $images = array_map(fn($url) => ['story_id' => $story->id, 'image_path' => $url], $request->images);
+                StoryImage::insert($images);
             }
+            // $story->update($validateData);
+            // if ($request->filled('cover')) {
+            //     $story->cover = $request->cover;
+            //     $story->save();
+            // }
+            // if ($request->filled('images')) {
+            //     StoryImage::where('story_id', $story->id)->delete();
+
+            //     foreach ($request->images as $imageUrl) {
+            //         StoryImage::create([
+            //             'story_id' => $story->id,
+            //             'image_path' => $imageUrl,
+            //         ]);
+            //     }
+            // }
 
             return response()->json([
                 'status' => 200,
@@ -351,6 +404,70 @@ class StoryController extends Controller
             ], 500);
         }
     }
+    // public function update(Request $request, $id)
+    // {
+    //     $user = $request->user();
+    //     if (!$user) {
+    //         return response()->json([
+    //             'status' => 401,
+    //             'success' => false,
+    //             'message' => 'User Not Authenticated',
+    //         ], 401);
+    //     }
+
+    //     $story = Story::where('id', $id)->where('user_id', $user->id)->first();
+    //     if (!$story) {
+    //         return response()->json([
+    //             'status' => 404,
+    //             'success' => false,
+    //             'message' => 'Story not found or you do not have permission to access it',
+    //         ], 404);
+    //     }
+    //     try {
+    //         $validateData = $request->validate([
+    //             'title' => 'sometimes|string|max:255',
+    //             'content' => 'sometimes|string',
+    //             'category_id' => 'sometimes|exists:categories,id',
+    //             'cover' => 'sometimes|url',
+    //             'images' => 'sometimes|array',
+    //             'images.*' => 'url'
+    //         ]);
+    //         $story->update($validateData);
+    //         if ($request->filled('cover')) {
+    //             $story->cover = $request->cover;
+    //             $story->save();
+    //         }
+    //         if ($request->filled('images')) {
+    //             StoryImage::where('story_id', $story->id)->delete();
+
+    //             foreach ($request->images as $imageUrl) {
+    //                 StoryImage::create([
+    //                     'story_id' => $story->id,
+    //                     'image_path' => $imageUrl,
+    //                 ]);
+    //             }
+    //         }
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'success' => true,
+    //             'message' => 'Updated Successfully',
+    //             'data' => $story->load('images')
+    //         ], 200);
+    //     } catch (ValidationException $e) {
+    //         return response()->json([
+    //             'status' => 422,
+    //             'success' => false,
+    //             'message' => $e->errors(),
+    //         ], 422);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => 500,
+    //             'success' => false,
+    //             'message' => 'Error Updating Data: ' . $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 
     //UPDATE DENGAN FORMDATA////
     // public function updateStory(Request $request, $id)
@@ -705,25 +822,38 @@ class StoryController extends Controller
     public function deleteStory($id)
     {
         try {
-            $user = auth()->user(); // Mendapatkan pengguna yang sedang login
-            $story = Story::where('id', $id)->where('user_id', $user->id)->first();
-
-            if (!$story) {
-                return response()->json([
-                    'status' => 404,
-                    'success' => false,
-                    'message' => 'Story not found or you do not have permission to delete this story',
-                ], 404);
-            }
+            $user = auth()->user();
+            // $story = Story::where('id', $id)->where('user_id', $user->id)->first();
+            abort_if(!$user, 401, 'User Not Authenticated');
+            $story = Story::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+            $this->authorize('delete', $story);
+            // if (!$story) {
+            //     return response()->json([
+            //         'status' => 404,
+            //         'success' => false,
+            //         'message' => 'Story not found or you do not have permission to delete this story',
+            //     ], 404);
+            // }
 
             // Lakukan soft delete
             $story->delete();
-
             return response()->json([
                 'status' => 200,
                 'success' => true,
                 'message' => 'Story successfully moved to trash',
             ], 200);
+        } catch (AuthorizationException $e) { // Tangani error ketika user tidak punya izin
+            return response()->json([
+                'status' => 403, // 403 Forbidden
+                'success' => false,
+                'message' => 'You do not have permission to delete this story',
+            ], 403);
+        } catch (ModelNotFoundException $e) { // Jika story tidak ditemukan
+            return response()->json([
+                'status' => 404,
+                'success' => false,
+                'message' => 'Story not found or you do not have permission to delete this story',
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Error deleting story:', ['error' => $e->getMessage()]);
             return response()->json([

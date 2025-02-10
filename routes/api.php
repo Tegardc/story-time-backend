@@ -29,7 +29,7 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
     Route::apiResource('story', StoryController::class);
     // Route::post('/story/{id}', [StoryController::class, 'update'])->name('update');
     Route::put('/story/{id}', [StoryController::class, 'update'])->name('update');
-    Route::put('/stories/{id}', [StoryController::class, 'updateStory']);
+    // Route::put('/stories/{id}', [StoryController::class, 'updateStory']);
 
     Route::get('/story-user', [StoryController::class, 'getStoryUser']);
 
