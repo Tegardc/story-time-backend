@@ -23,7 +23,7 @@ class StoryController extends Controller
     {
         try {
             $category = $request->query('category') ?? null;
-            $story = $request->query('story') ?? null;
+            $story = $request->query('title') ?? null;
             $sortBy = $request->query('sort_by', 'created_at');
             $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc';
 
@@ -89,6 +89,30 @@ class StoryController extends Controller
             ], 500);
         }
     }
+    public function search(Request $request)
+    {
+        $query = Story::query();
+
+        if ($request->has('title')) {
+            $query->where('title', 'like', '%' . $request->title . '%');
+        }
+
+        if ($request->has('category')) {
+            $query->whereHas('category', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->category . '%');
+            });
+        }
+
+        $stories = $query->with(['category', 'user'])->get();
+
+        return response()->json([
+            'status' => 200,
+            'success' => true,
+            'message' => 'Search results',
+            'data' => $stories
+        ], 200);
+    }
+
 
 
 
@@ -824,8 +848,14 @@ class StoryController extends Controller
         try {
             $user = auth()->user();
             // $story = Story::where('id', $id)->where('user_id', $user->id)->first();
-            abort_if(!$user, 401, 'User Not Authenticated');
-            $story = Story::where('id', $id)->where('user_id', $user->id)->firstOrFail();
+            if (!$user) {
+                return response()->json([
+                    'status' => 401,
+                    'success' => false,
+                    'message' => 'User Not Authenticated',
+                ], 401);
+            }
+            $story = Story::findOrFail($id);
             $this->authorize('delete', $story);
             // if (!$story) {
             //     return response()->json([
@@ -848,12 +878,6 @@ class StoryController extends Controller
                 'success' => false,
                 'message' => 'You do not have permission to delete this story',
             ], 403);
-        } catch (ModelNotFoundException $e) { // Jika story tidak ditemukan
-            return response()->json([
-                'status' => 404,
-                'success' => false,
-                'message' => 'Story not found or you do not have permission to delete this story',
-            ], 404);
         } catch (\Exception $e) {
             Log::error('Error deleting story:', ['error' => $e->getMessage()]);
             return response()->json([
