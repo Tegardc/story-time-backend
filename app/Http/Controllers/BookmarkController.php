@@ -29,7 +29,6 @@ class BookmarkController extends Controller
                 'user_id' => $validateData['user_id'],
                 'story_id' => $validateData['story_id'],
             ])->first();
-
             if ($bookmark) {
                 $bookmark->delete();
                 return response()->json([
@@ -48,7 +47,6 @@ class BookmarkController extends Controller
                         'id' => $newBookmark->id,
                         'user_id' => $newBookmark->user_id,
                         'username' => $user->username,
-
                         'story' => [
                             'id' => $newBookmark->story_id,
                             'title' => $story->title,
@@ -137,6 +135,7 @@ class BookmarkController extends Controller
                     'title' => $story->title,
                     'cover' => $story->cover,
                     'created_at' => $story->created_at,
+                    'content' => $story->content,
                     'category' => $story->category->name,
                     'author_id' => $story->user_id,
                     'author_name' => $story->user->username,
