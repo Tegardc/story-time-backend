@@ -15,11 +15,8 @@ class apiResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'response' => 200,
-            'status' => 200,
-            'success' => true,
-            'message' => $this->message,
-            'data' => $this->data,
+            'id' => $this->id,
+            'name' => $this->name,
         ];
     }
 }

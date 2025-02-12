@@ -45,11 +45,10 @@ class BookmarkController extends Controller
                     'success' => true,
                     'message' => 'Bookmark Added.',
                     'data' => [
-                        'bookmark' => [
-                            'id' => $newBookmark->id,
-                            'user_id' => $newBookmark->user_id,
-                            'username' => $user->username,
-                        ],
+                        'id' => $newBookmark->id,
+                        'user_id' => $newBookmark->user_id,
+                        'username' => $user->username,
+
                         'story' => [
                             'id' => $newBookmark->story_id,
                             'title' => $story->title,
@@ -57,11 +56,9 @@ class BookmarkController extends Controller
                             'category' =>
                             $story->category->name,
                             'content' => $story->content,
-                            'author' => $story->user ? [
-                                'author_id' => $story->user_id,
-                                'author_name' => $story->user->username,
-                                'image' => $story->user->image,
-                            ] : null,
+                            'author_id' => $story->user_id,
+                            'author_name' => $story->user->username,
+                            'image' => $story->user->image,
                         ]
                     ]
                 ], 200);
@@ -102,8 +99,7 @@ class BookmarkController extends Controller
      */
     public function show(Request $request)
     {
-        $pagination = $request->query('per_page', 5);
-
+        $pagination = $request->query('per_page', 10);
         $user = $request->user();
         if (!$user) {
             return response()->json([
@@ -120,7 +116,10 @@ class BookmarkController extends Controller
         $bookmarksPaginated = $bookmarkQuery->paginate($pagination);
 
         if ($bookmarksPaginated->isEmpty()) {
-            return response()->json(['message' => 'No Bookmark Found for this user', 'success' => false], 404);
+            return response()->json([
+                'message' => 'No Bookmark Found for this user',
+                'success' => false
+            ], 404);
         }
 
         $formattedBookmarks = $bookmarksPaginated->getCollection()->map(function ($bookmark) {
@@ -130,22 +129,19 @@ class BookmarkController extends Controller
                 return null;
             }
             return [
-                'bookmark' => [
-                    'id' => $bookmark->id,
-                    'user_id' => $bookmark->user_id,
-                    'username' => $bookmark->user->username,
-                ],
+                'id' => $bookmark->id,
+                'user_id' => $bookmark->user_id,
+                'username' => $bookmark->user->username,
                 'story' => [
                     'id' => $story->id,
                     'title' => $story->title,
                     'cover' => $story->cover,
                     'created_at' => $story->created_at,
                     'category' => $story->category->name,
-                    'author' => [
-                        'author_id' => $story->user_id,
-                        'author_name' => $story->user->username,
-                        'author_image' => $story->user->image,
-                    ]
+                    'author_id' => $story->user_id,
+                    'author_name' => $story->user->username,
+                    'author_image' => $story->user->image,
+
                 ],
             ];
         })->filter()->values();
