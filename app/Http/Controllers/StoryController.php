@@ -24,6 +24,7 @@ class StoryController extends Controller
         try {
             $category = $request->query('category') ?? null;
             $story = $request->query('title') ?? null;
+            $sort = $request->query('sort') ?? null;
             $sortBy = $request->query('sort_by', 'created_at');
             $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc';
 
@@ -38,6 +39,14 @@ class StoryController extends Controller
                     $q->where('name', 'like', "%$category%");
                 });
             }
+            if ($sort === 'a-z') {
+                $sortBy = 'title';
+                $order = 'asc';
+            } elseif ($sort === 'z-a') {
+                $sortBy = 'title';
+                $order = 'desc';
+            }
+
 
             // Validasi agar sort_by hanya bisa pakai kolom yang valid
             $validSortColumns = ['id', 'title', 'created_at'];
