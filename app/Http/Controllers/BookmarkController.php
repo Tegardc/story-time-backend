@@ -110,7 +110,7 @@ class BookmarkController extends Controller
         }
 
         $bookmarksPaginated = Bookmark::where('user_id', $user->id)
-            ->with(['story.user', 'story.category'])
+            ->with(['story.user', 'story.category'])->orderBy('created_at', 'desc')
             ->paginate($pagination);
 
         if ($bookmarksPaginated->isEmpty()) {
