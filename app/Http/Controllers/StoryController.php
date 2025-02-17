@@ -144,15 +144,25 @@ class StoryController extends Controller
         //
     }
 
-
     public function update(Request $request, $id)
     {
         $user = $request->user();
         if (!$user) {
-            return $this->errorResponse("Unauthenticated", 401);
+            return response()->json([
+                'status' => 401,
+                'success' => false,
+                'message' => 'User Not Authenticated',
+            ], 401);
         }
-        $story = Story::findOrFail($id);
-        $this->authorize('update', $story);
+
+        $story = Story::where('id', $id)->where('user_id', $user->id)->first();
+        if (!$story) {
+            return response()->json([
+                'status' => 404,
+                'success' => false,
+                'message' => 'Story not found or you do not have permission to access it',
+            ], 404);
+        }
         try {
             $validateData = $request->validate([
                 'title' => 'sometimes|string|max:255',
@@ -163,21 +173,75 @@ class StoryController extends Controller
                 'images.*' => 'url'
             ]);
             $story->update($validateData);
-            if ($request->has('cover')) {
-                $story->update(['cover' => $request->cover]);
+            if ($request->filled('cover')) {
+                $story->cover = $request->cover;
+                $story->save();
             }
-            if ($request->has('images')) {
+            if ($request->filled('images')) {
                 StoryImage::where('story_id', $story->id)->delete();
-                $images = array_map(fn($url) => ['story_id' => $story->id, 'image_path' => $url], $request->images);
-                StoryImage::insert($images);
+
+                foreach ($request->images as $imageUrl) {
+                    StoryImage::create([
+                        'story_id' => $story->id,
+                        'image_path' => $imageUrl,
+                    ]);
+                }
             }
-            return $this->successResponse("Updated Success", $this->formatStoryResponse($story));
+
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Updated Successfully',
+                'data' => $story->load('images')
+            ], 200);
         } catch (ValidationException $e) {
-            return $this->errorResponse($e->errors(), 422);
+            return response()->json([
+                'status' => 422,
+                'success' => false,
+                'message' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
-            return $this->errorResponse("Error Updating Data: " . $e->getMessage(), 500);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'Error Updating Data: ' . $e->getMessage(),
+            ], 500);
         }
     }
+
+    // public function update(Request $request, $id)
+    // {
+    //     $user = $request->user();
+    //     if (!$user) {
+    //         return $this->errorResponse("Unauthenticated", 401);
+    //     }
+    //     $story = Story::findOrFail($id);
+    //     $this->authorize('update', $story);
+    //     try {
+    //         $validateData = $request->validate([
+    //             'title' => 'sometimes|string|max:255',
+    //             'content' => 'sometimes|string',
+    //             'category_id' => 'sometimes|exists:categories,id',
+    //             'cover' => 'sometimes|url',
+    //             'images' => 'sometimes|array',
+    //             'images.*' => 'url'
+    //         ]);
+    //         $story->update($validateData);
+    //         if ($request->has('cover')) {
+    //             $story->update(['cover' => $request->cover]);
+    //         }
+    //         if ($request->has('images')) {
+    //             StoryImage::where('story_id', $story->id)->delete();
+    //             $images = array_map(fn($url) => ['story_id' => $story->id, 'image_path' => $url], $request->images);
+    //             StoryImage::insert($images);
+    //         }
+    //         return $this->successResponse("Updated Success", $this->formatStoryResponse($story));
+    //     } catch (ValidationException $e) {
+    //         return $this->errorResponse($e->errors(), 422);
+    //     } catch (\Exception $e) {
+    //         return $this->errorResponse("Error Updating Data: " . $e->getMessage(), 500);
+    //     }
+    // }
 
     public function destroy() {}
     public function getStoryUser(Request $request)
