@@ -132,7 +132,7 @@ class CategoryController extends Controller
                 return [
                     'id' => $category->id,
                     'category_name' => $category->name,
-                    'stories' => $category->stories->map(fn($story) => $this->formatStoryResponse($story)), // TANPA take(3)
+                    'stories' => $category->stories->take(3)->map(fn($story) => $this->formatStoryResponse($story)), // Batasi di Collection
                 ];
             });
 
