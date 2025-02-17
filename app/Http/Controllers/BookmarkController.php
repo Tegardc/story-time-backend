@@ -98,26 +98,27 @@ class BookmarkController extends Controller
     // }
     public function show(Request $request)
     {
-        $pagination = $request->query('per_page', 100);
+        $pagination = $request->query('per_page', 10);
         $user = $request->user();
+
         if (!$user) {
             return response()->json([
                 'status' => 402,
                 'success' => false,
                 'message' => 'Unauthorized',
-
             ], 402);
         }
 
-        $bookmarkQuery = Bookmark::where('user_id', $user->id)
-            ->with('story.user', 'story.category');
-
-        $bookmarksPaginated = $bookmarkQuery->paginate($pagination);
+        $bookmarksPaginated = Bookmark::where('user_id', $user->id)
+            ->with(['story.user', 'story.category'])
+            ->paginate($pagination);
 
         if ($bookmarksPaginated->isEmpty()) {
             return response()->json([
+                'status' => 404,
+                'success' => false,
                 'message' => 'No Bookmark Found for this user',
-                'success' => false
+                'data' => []
             ], 404);
         }
 
@@ -131,29 +132,79 @@ class BookmarkController extends Controller
                 'id' => $bookmark->id,
                 'user_id' => $bookmark->user_id,
                 'username' => $bookmark->user->username,
-                'story' => [
-                    'id' => $story->id,
-                    'title' => $story->title,
-                    'cover' => $story->cover,
-                    'created_at' => $story->created_at,
-                    'content' => $story->content,
-                    'category' => $story->category->name,
-                    'author_id' => $story->user_id,
-                    'author_name' => $story->user->username,
-                    'author_image' => $story->user->image,
-
-                ],
+                'story' => $this->formatStoryResponse($story)
             ];
         })->filter()->values();
+
         $bookmarksPaginated->setCollection($formattedBookmarks);
 
         return response()->json([
             'status' => 200,
-            "success" => true,
+            'success' => true,
             'message' => 'Display Bookmark Successfully',
             'data' => $bookmarksPaginated
         ]);
     }
+
+    //////////////////
+    // public function show(Request $request)
+    // {
+    //     $pagination = $request->query('per_page', 100);
+    //     $user = $request->user();
+    //     if (!$user) {
+    //         return response()->json([
+    //             'status' => 402,
+    //             'success' => false,
+    //             'message' => 'Unauthorized',
+
+    //         ], 402);
+    //     }
+
+    //     $bookmarkQuery = Bookmark::where('user_id', $user->id)
+    //         ->with('story.user', 'story.category');
+
+    //     $bookmarksPaginated = $bookmarkQuery->paginate($pagination);
+
+    //     if ($bookmarksPaginated->isEmpty()) {
+    //         return response()->json([
+    //             'message' => 'No Bookmark Found for this user',
+    //             'success' => false
+    //         ], 404);
+    //     }
+
+    //     $formattedBookmarks = $bookmarksPaginated->getCollection()->map(function ($bookmark) {
+    //         $story = $bookmark->story;
+
+    //         if (!$story || !$story->user || !$story->category) {
+    //             return null;
+    //         }
+    //         return [
+    //             'id' => $bookmark->id,
+    //             'user_id' => $bookmark->user_id,
+    //             'username' => $bookmark->user->username,
+    //             'story' => [
+    //                 'id' => $story->id,
+    //                 'title' => $story->title,
+    //                 'cover' => $story->cover,
+    //                 'created_at' => $story->created_at,
+    //                 'content' => $story->content,
+    //                 'category' => $story->category->name,
+    //                 'author_id' => $story->user_id,
+    //                 'author_name' => $story->user->username,
+    //                 'author_image' => $story->user->image,
+
+    //             ],
+    //         ];
+    //     })->filter()->values();
+    //     $bookmarksPaginated->setCollection($formattedBookmarks);
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         "success" => true,
+    //         'message' => 'Display Bookmark Successfully',
+    //         'data' => $bookmarksPaginated
+    //     ]);
+    // }
 
 
     public function edit(Bookmark $bookmark)
