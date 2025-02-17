@@ -98,7 +98,7 @@ class BookmarkController extends Controller
     // }
     public function show(Request $request)
     {
-        $pagination = $request->query('per_page', 10);
+        $pagination = $request->query('per_page', 100);
         $user = $request->user();
         if (!$user) {
             return response()->json([
