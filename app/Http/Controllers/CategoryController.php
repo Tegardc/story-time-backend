@@ -48,28 +48,77 @@ class CategoryController extends Controller
         }
         //
     }
+    // public function showStoryByCategory(Request $request)
+    // {
+    //     try {
+    //         $categories = Category::with(['stories' => function ($query) {
+    //             $query->take(3)->with('user');
+    //         }])->get();
+
+    //         if ($categories->isEmpty()) {
+    //             return $this->errorResponse("Category Not Found", 404);
+    //         }
+    //         $formattedCategories = $categories->map(function ($category) {
+    //             return [
+    //                 'id' => $category->id,
+    //                 'category_name' => $category->name,
+    //                 'stories' => $category->stories->map(fn($story) => $this->formatStoryResponse($story))
+    //             ];
+    //         });
+    //         return $this->successResponse("Successfully Display Data", $formattedCategories);
+    //     } catch (\Exception $e) {
+    //         return $this->errorResponse("Error Displayed Data: " . $e->getMessage(), 500);
+    //     }
+    // }
     public function showStoryByCategory(Request $request)
     {
         try {
-            $categories = Category::with(['stories' => function ($query) {
-                $query->take(3)->with('user');
+            $categories = Category::with(['stories.user' => function ($query) {
+                $query->take(3);
             }])->get();
 
             if ($categories->isEmpty()) {
-                return $this->errorResponse("Category Not Found", 404);
+                return response()->json([
+                    'status' => 404,
+                    'success' => false,
+                    'message' => 'No categories found',
+                ], 404);
             }
-            $formattedCategories = $categories->map(function ($category) {
+            $data = $categories->map(function ($category) {
                 return [
                     'id' => $category->id,
                     'category_name' => $category->name,
-                    'stories' => $category->stories->map(fn($story) => $this->formatStoryResponse($story))
+                    'stories' => $category->stories->take(3)->map(function ($story) {
+                        return [
+                            'id' => $story->id,
+                            'title' => $story->title,
+                            'content' => $story->content,
+                            'cover' => $story->cover,
+                            'created_at' => $story->created_at,
+                            'author_id' => optional($story->user)->id, // Cegah error jika user null
+                            'author_name' => optional($story->user)->username, // Gunakan optional()
+                            'author_image' => optional($story->user)->image,
+                        ];
+                    }),
                 ];
             });
-            return $this->successResponse("Successfully Display Data", $formattedCategories);
+            return response()->json([
+                'status' => 200,
+                'success' => true,
+                'message' => 'Categories and stories retrieved successfully',
+                'data' => $data,
+            ], 200);
         } catch (\Exception $e) {
-            return $this->errorResponse("Error Displayed Data: " . $e->getMessage(), 500);
+            return response()->json([
+                'status' => 500,
+                'success' => false,
+                'message' => 'Error retrieving categories and stories',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
+
+
     public function show(Request $request, $id)
     {
         try {
