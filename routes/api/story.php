@@ -19,6 +19,10 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
         StoryController::class,
         'store'
     ]);
+    Route::get('/story/{id}', [
+        StoryController::class,
+        'show'
+    ]);
     Route::put('/story/{id}', [
         StoryController::class,
         'update'
