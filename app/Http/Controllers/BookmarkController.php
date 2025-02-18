@@ -119,7 +119,7 @@ class BookmarkController extends Controller
                 'success' => true,
                 'message' => 'No Bookmark Found for this user',
                 'data' => []
-            ], 404);
+            ], 200);
         }
 
         $formattedBookmarks = $bookmarksPaginated->getCollection()->map(function ($bookmark) {
