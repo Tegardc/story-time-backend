@@ -22,24 +22,25 @@ class StoryController extends Controller
     /**
      * Display a listing of the resource.
      */
+    //Menampilkan Daftar Cerita
     public function index(Request $request)
     {
         try {
-            $category = $request->query('category') ?? null;
+            // Ambil query parameters dari request
+            $category = $request->input('category') ?? null;
             $story = $request->query('title') ?? null;
             $sort = $request->query('sort') ?? null;
             $sortBy = $request->query('sort_by', 'created_at');
             $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc';
 
+            // Query awal dengan relasi kategori dan pengguna
             $query = Story::query()->with(['category', 'user']);
+
+            // Filter berdasarkan judul
             if ($story) {
                 $query->where('title', 'like', "%$story%");
             }
-            if ($category) {
-                $query->whereHas('category', function ($q) use ($category) {
-                    $q->where('name', 'like', "%$category%");
-                });
-            }
+            // Sorting berdasarkan pilihan pengguna
             if ($sort === 'a-z') {
                 $sortBy = 'title';
                 $order = 'asc';
@@ -61,6 +62,7 @@ class StoryController extends Controller
                     404
                 );
             }
+            // Format response dengan mapping
             return $this->successResponse("Successfully Displayed Data", $stories->map(fn($story) => $this->formatStoryResponse($story)));
         } catch (\Exception $e) {
             return $this->errorResponse("Error Displayed Data: " . $e->getMessage(), 500);
@@ -70,6 +72,7 @@ class StoryController extends Controller
     {
         $query = Story::query();
 
+        // Filter berdasarkan judul
         if ($request->has('title')) {
             $query->where('title', 'like', '%' . $request->title . '%');
         }
@@ -99,14 +102,18 @@ class StoryController extends Controller
      * Store a newly created resource in storage.
      */
 
-    //Create Story dengan Raw//
+    //Create Story//
     public function store(StoryRequest $request)
     {
         try {
+            //Ambil pengguna yang sedang login
             $user = $request->user();
+
+            // Validasi input
             $validated = $request->validated();
             $validated['user_id'] = $user->id;
 
+            // Simpan cerita baru ke database
             $newStory = Story::create([
                 'title' => $validated['title'],
                 'content' => $validated['content'],
@@ -115,6 +122,7 @@ class StoryController extends Controller
                 'cover' => $validated['cover'],
             ]);
 
+            // Simpan gambar cerita
             foreach ($validated['images'] as $imageUrl) {
                 StoryImage::create([
                     'story_id' => $newStory->id,
@@ -122,6 +130,7 @@ class StoryController extends Controller
                 ]);
             }
 
+            // Load relasi setelah penyimpanan
             $newStory->load(['category', 'user', 'story_images']);
             return $this->successResponse("Story Added", $this->formatStoryResponse($newStory), 201);
         } catch (\Exception $e) {
@@ -132,11 +141,21 @@ class StoryController extends Controller
 
     public function show($id)
     {
-        $story = Story::with('story_images', 'category', 'user')->find($id);
+        $story = Story::with(
+            'story_images',
+            'category',
+            'user'
+        )->find($id);
         if (!$story) {
-            return $this->errorResponse("No Story Found", 404);
+            return $this->errorResponse(
+                "No Story Found",
+                404
+            );
         }
-        return $this->successResponse("Successfully Display Data", $this->formatStoryResponse($story));
+        return $this->successResponse(
+            "Successfully Display Data",
+            $this->formatStoryResponse($story)
+        );
     }
 
     public function edit(Story $story)
@@ -179,7 +198,6 @@ class StoryController extends Controller
             }
             if ($request->filled('images')) {
                 StoryImage::where('story_id', $story->id)->delete();
-
                 foreach ($request->images as $imageUrl) {
                     StoryImage::create([
                         'story_id' => $story->id,
@@ -328,14 +346,18 @@ class StoryController extends Controller
     public function deleteStory($id)
     {
         try {
+            // Ambil pengguna yang sedang login
             $user = auth()->user();
             if (!$user) {
                 return $this->errorResponse("Unauthenticated", 401);
             }
+            // Cari cerita berdasarkan ID
             $story = Story::findOrFail($id);
 
+            // Memastikan pengguna memiliki izin untuk menghapus cerita
             $this->authorize('delete', $story);
 
+            // Hapus cerita
             $story->delete();
             return $this->successResponse("Delete Data Successfully", null, 200);
         } catch (ModelNotFoundException $e) {

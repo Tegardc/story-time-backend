@@ -115,8 +115,8 @@ class BookmarkController extends Controller
 
         if ($bookmarksPaginated->isEmpty()) {
             return response()->json([
-                'status' => 404,
-                'success' => false,
+                'status' => 200,
+                'success' => true,
                 'message' => 'No Bookmark Found for this user',
                 'data' => []
             ], 404);
