@@ -58,9 +58,9 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
 });
 
 Route::apiResource('category', CategoryController::class);
-// Route::post('/login', [UserController::class, 'login'])->name('login');
-// Route::post('/register', [UserController::class, 'regis'])->name('regis');
-// Route::post('/logout', [UserController::class, 'logout'])->name('user.logout')->middleware(middleware: 'auth:sanctum');
+Route::post('/login', [UserController::class, 'login'])->name('login');
+Route::post('/register', [UserController::class, 'regis'])->name('regis');
+Route::post('/logout', [UserController::class, 'logout'])->name('user.logout')->middleware(middleware: 'auth:sanctum');
 Route::post('/upload', [UploadFileController::class, 'upload']);
 Route::post('/upload-file', [UploadFileController::class, 'uploadFile']);
 Route::get('/stories/popular', [StoryController::class, 'popularStory']);
@@ -79,7 +79,7 @@ Route::get('/category', [CategoryController::class, 'index'])->name('index');
 Route::get('/category/{id}', [CategoryController::class, 'show'])->name('show');
 Route::get('/category-story', [CategoryController::class, 'showStoryByCategory']);
 Route::get('/categories/{id}', [CategoryController::class, 'getStoryByCategory'])->name('getStoryByCategory');
-Route::post('/category   ', [CategoryController::class, 'store'])->name('store');
+Route::post('/category', [CategoryController::class, 'store'])->name('store');
 Route::get('/story/detail/{id}', [StoryController::class, 'show']);
 Route::get('/health', function () {
     return response()->json([
