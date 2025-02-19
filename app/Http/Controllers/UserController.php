@@ -120,7 +120,7 @@ class UserController extends Controller
             $newUser = User::create($validateData);
             $hours = (int) 4;
             $plainTextToken = $newUser->createToken($newUser->email, ['*'], now()->addHours($hours))->plainTextToken;
-            return $this->successResponse("Login Successfully", [
+            return $this->successResponse("Register Successfully", [
                 'user' => $this->formatUserResponse($newUser),
                 'token' => $plainTextToken
             ]);
