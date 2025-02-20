@@ -35,7 +35,7 @@ Route::middleware(['auth:sanctum', 'auth.check'])->group(function () {
 
     //API STORY??
     Route::apiResource('story', StoryController::class);
-    // Route::post('/story/{id}', [StoryController::class, 'update'])->name('update');
+
     Route::put('/story/{id}', [StoryController::class, 'update'])->name('update');
     // Route::put('/stories/{id}', [StoryController::class, 'updateStory']);
 

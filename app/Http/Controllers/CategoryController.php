@@ -52,8 +52,9 @@ class CategoryController extends Controller
     public function showStoryByCategory(Request $request)
     {
         try {
-
-            $categories = Category::with(['stories.user'])->get();
+            $perPage = $request->input('per_page', 12);
+            $query = Category::with(['stories.user']);
+            $categories = $query->paginate($perPage);
 
             if ($categories->isEmpty()) {
                 return $this->successResponse("No categories found", []);
@@ -67,7 +68,14 @@ class CategoryController extends Controller
                 ];
             });
 
-            return $this->successResponse("Successfully Display Data", $formattedCategories);
+            return response()->json([
+                'message' => "Successfully Displayed Data",
+                'data' => $formattedCategories,
+                'current_page' => $categories->currentPage(),
+                'last_page' => $categories->lastPage(),
+                'per_page' => $categories->perPage(),
+                'total' => $categories->total(),
+            ]);
         } catch (\Exception $e) {
             return $this->errorResponse("Error retrieving categories and stories: " . $e->getMessage(), 500);
         }

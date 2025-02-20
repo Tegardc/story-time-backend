@@ -26,20 +26,22 @@ class StoryController extends Controller
     public function index(Request $request)
     {
         try {
-            // Ambil query parameters dari request
+            // Ambil input dari request
             $category = $request->input('category') ?? null;
-            $story = $request->query('title') ?? null;
-            $sort = $request->query('sort') ?? null;
-            $sortBy = $request->query('sort_by', 'created_at');
-            $order = strtolower($request->query('order')) === 'asc' ? 'asc' : 'desc';
+            $story = $request->input('title') ?? null;
+            $sort = $request->input('sort') ?? null;
+            $sortBy = $request->input('sort_by', 'created_at');
+            $order = strtolower($request->input('order')) === 'asc' ? 'asc' : 'desc';
+            $perPage = $request->input('per_page', 12);
 
             // Query awal dengan relasi kategori dan pengguna
-            $query = Story::query()->with(['category', 'user']);
+            $query = Story::with(['category', 'user']);
 
             // Filter berdasarkan judul
             if ($story) {
                 $query->where('title', 'like', "%$story%");
             }
+
             // Sorting berdasarkan pilihan pengguna
             if ($sort === 'a-z') {
                 $sortBy = 'title';
@@ -48,26 +50,43 @@ class StoryController extends Controller
                 $sortBy = 'title';
                 $order = 'desc';
             }
+
             // Validasi agar sort_by hanya bisa pakai kolom yang valid
             $validSortColumns = ['id', 'title', 'created_at'];
             if (!in_array($sortBy, $validSortColumns)) {
                 $sortBy = 'created_at';
             }
-            $query->orderBy($sortBy, $order);
-            $stories = $query->get();
 
+            // Urutkan berdasarkan pilihan pengguna
+            $query->orderBy($sortBy, $order);
+
+            // Ambil data dengan pagination
+            $stories = $query->paginate($perPage);
+
+            // Cek jika tidak ada data
             if ($stories->isEmpty()) {
-                return $this->errorResponse(
-                    "No Stories Data",
-                    404
-                );
+                return $this->errorResponse("No Stories Data", 404);
             }
-            // Format response dengan mapping
-            return $this->successResponse("Successfully Displayed Data", $stories->map(fn($story) => $this->formatStoryResponse($story)));
+
+            // Format data utama tanpa pagination
+            $formattedData = collect($stories->items())->map(fn($story) => $this->formatStoryResponse($story));
+
+            // Mengirimkan pagination di luar "data"
+            return response()->json([
+
+                'message' => "Successfully Displayed Data",
+                'data' => $formattedData,
+                'current_page' => $stories->currentPage(),
+                'last_page' => $stories->lastPage(),
+                'per_page' => $stories->perPage(),
+                'total' => $stories->total(),
+            ]);
         } catch (\Exception $e) {
             return $this->errorResponse("Error Displayed Data: " . $e->getMessage(), 500);
         }
     }
+
+
     public function search(Request $request)
     {
         $query = Story::query();
@@ -296,12 +315,12 @@ class StoryController extends Controller
             return $this->errorResponse("Error Displayed Data: " . $e->getMessage(), 500);
         }
     }
-    public function newest()
+    public function newest(Request $request)
     {
         try {
-            $newestStories = Story::with(['category', 'user'])->orderBy('created_at', 'desc')
-                // ->take(10)
-                ->get();
+            $perPage = $request->input('per_page', 12);
+            $query = Story::with(['category', 'user'])->orderBy('created_at', 'desc');
+            $newestStories = $query->paginate($perPage);
 
             if ($newestStories->isEmpty()) {
                 return $this->errorResponse(
@@ -309,7 +328,14 @@ class StoryController extends Controller
                     404
                 );
             }
-            return $this->successResponse("Successfully Displayed Data", $newestStories->map(fn($story) => $this->formatStoryResponse($story)));
+            return response()->json([
+                'message' => "Successfully Displayed Data",
+                'data' => collect($newestStories->items())->map(fn($story) => $this->formatStoryResponse($story)), // FIX DOUBLE DATA
+                'current_page' => $newestStories->currentPage(),
+                'last_page' => $newestStories->lastPage(),
+                'per_page' => $newestStories->perPage(),
+                'total' => $newestStories->total(),
+            ]);
         } catch (\Exception $e) {
             return $this->errorResponse("Error Displayed Data: " . $e->getMessage(), 500);
         }
