@@ -304,25 +304,57 @@ class StoryController extends Controller
     }
 
 
+    // public function popularStory(Request $request)
+    // {
+    //     try {
+    //         $pagination = $request->query('per_page') ?? 12;
+    //         $populerStories = Story::with(['user', 'category'])->withCount(['bookmarks' => function ($query) {
+    //             $query->where('created_at', '>=', now()->subDays(100));
+    //         }])->orderBy('bookmarks_count', 'desc')->paginate($pagination);
+
+    //         if ($populerStories->isEmpty()) {
+    //             return $this->errorResponse('No Story Found', 404);
+    //         }
+    //         $formattedData = $populerStories->getCollection()->map(fn($story) => $this->formatPopularResponse($story));
+    //         $populerStories->setCollection($formattedData);
+
+    //         return $this->successResponse("Success Displayed Popular Stories ", $populerStories);
+    //     } catch (\Exception $e) {
+    //         return $this->errorResponse("Error Displayed Data: " . $e->getMessage(), 500);
+    //     }
+    // }
     public function popularStory(Request $request)
     {
         try {
-            $pagination = $request->query('per_page') ?? 10;
-            $populerStories = Story::with(['user', 'category'])->withCount(['bookmarks' => function ($query) {
-                $query->where('created_at', '>=', now()->subDays(100));
-            }])->orderBy('bookmarks_count', 'desc')->paginate($pagination);
+            $perPage = $request->query('per_page', 12); // Default 12
+            $populerStories = Story::with(['user', 'category'])
+                ->withCount(['bookmarks' => function ($query) {
+                    $query->where('created_at', '>=', now()->subDays(100));
+                }])
+                ->orderBy('bookmarks_count', 'desc')
+                ->paginate($perPage);
 
+            // Jika tidak ada data
             if ($populerStories->isEmpty()) {
-                return $this->errorResponse('No Story Found', 404);
+                return $this->errorResponse("No Stories Data", 404);
             }
-            $formattedData = $populerStories->getCollection()->map(fn($story) => $this->formatPopularResponse($story));
-            $populerStories->setCollection($formattedData);
 
-            return $this->successResponse("Success Displayed Popular Stories ", $populerStories);
+            // Format data agar tidak terjadi duplikasi dalam response
+            $formattedData = collect($populerStories->items())->map(fn($story) => $this->formatPopularResponse($story));
+
+            return response()->json([
+                'message' => "Successfully Displayed Data",
+                'data' => $formattedData,
+                'current_page' => $populerStories->currentPage(),
+                'last_page' => $populerStories->lastPage(),
+                'per_page' => $populerStories->perPage(),
+                'total' => $populerStories->total(),
+            ]);
         } catch (\Exception $e) {
             return $this->errorResponse("Error Displayed Data: " . $e->getMessage(), 500);
         }
     }
+
     public function newest(Request $request)
     {
         try {
