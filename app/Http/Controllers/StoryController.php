@@ -284,14 +284,22 @@ class StoryController extends Controller
     public function getStoryUser(Request $request)
     {
         $user = $request->user();
+        $perPage = $request->input('per_page', 4);
         if (!$user) {
             return $this->errorResponse("Unauthenticated", 401);
         }
-        $stories = Story::where('user_id', $user->id)->with('category', 'user')->orderBy('created_at', 'desc')->get();
+        $query = Story::where('user_id', $user->id)->with('category', 'user')->orderBy('created_at', 'desc');
+        $stories = $query->paginate($perPage);
 
-        return $this->successResponse(
-            "Success Displayed Data",
-            $stories->isEmpty() ? [] : $stories->map(fn($story) => $this->formatStoryResponse($story))
+        return response()->json(
+            [
+                'message' => "Success Displayed Data",
+                'data' => $stories->isEmpty() ? [] : $stories->map(fn($story) => $this->formatStoryResponse($story)),
+                'current_page' => $stories->currentPage(),
+                'last_page' => $stories->lastPage(),
+                'per_page' => $stories->perPage(),
+                'total' => $stories->total(),
+            ]
         );
     }
 

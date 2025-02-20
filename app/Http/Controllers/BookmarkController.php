@@ -98,52 +98,61 @@ class BookmarkController extends Controller
     // }
     public function show(Request $request)
     {
-        $pagination = $request->query('per_page', 10);
-        $user = $request->user();
+        try {
+            $pagination = $request->query('per_page', 4);
+            $user = $request->user();
 
-        if (!$user) {
-            return response()->json([
-                'status' => 402,
-                'success' => false,
-                'message' => 'Unauthorized',
-            ], 402);
-        }
-
-        $bookmarksPaginated = Bookmark::where('user_id', $user->id)
-            ->with(['story.user', 'story.category'])->orderBy('created_at', 'desc')
-            ->paginate($pagination);
-
-        if ($bookmarksPaginated->isEmpty()) {
-            return response()->json([
-                'status' => 200,
-                'success' => true,
-                'message' => 'No Bookmark Found for this user',
-                'data' => []
-            ], 200);
-        }
-
-        $formattedBookmarks = $bookmarksPaginated->getCollection()->map(function ($bookmark) {
-            $story = $bookmark->story;
-
-            if (!$story || !$story->user || !$story->category) {
-                return null;
+            if (!$user) {
+                return response()->json([
+                    'status' => 401, // Status 401 untuk Unauthorized
+                    'success' => false,
+                    'message' => 'Unauthorized',
+                ], 401);
             }
-            return [
-                'id' => $bookmark->id,
-                'user_id' => $bookmark->user_id,
-                'username' => $bookmark->user->username,
-                'story' => $this->formatStoryResponse($story)
-            ];
-        })->filter()->values();
 
-        $bookmarksPaginated->setCollection($formattedBookmarks);
+            // Ambil bookmark user dengan pagination dan relasi story
+            $bookmarksPaginated = Bookmark::where('user_id', $user->id)
+                ->with(['story.user', 'story.category'])
+                ->orderBy('created_at', 'desc')
+                ->paginate($pagination);
 
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'Display Bookmark Successfully',
-            'data' => $bookmarksPaginated
-        ]);
+            // Jika tidak ada bookmark
+            if ($bookmarksPaginated->isEmpty()) {
+                return response()->json([
+                    'status' => 200,
+                    'success' => true,
+                    'message' => 'No Bookmark Found for this user',
+                    'data' => []
+                ], 200);
+            }
+
+            // Mapping data tanpa mengganggu struktur pagination
+            $formattedBookmarks = $bookmarksPaginated->map(function ($bookmark) {
+                $story = $bookmark->story;
+
+                if (!$story || !$story->user || !$story->category) {
+                    return null;
+                }
+
+                return [
+                    'id' => $bookmark->id,
+                    'user_id' => $bookmark->user_id,
+                    'story' => $this->formatStoryResponse($story),
+                ];
+            })->filter()->values();
+
+            // Response JSON
+            return response()->json([
+                'message' => 'Display Bookmark Successfully',
+                'data' => $formattedBookmarks,
+                'current_page' => $bookmarksPaginated->currentPage(),
+                'last_page' => $bookmarksPaginated->lastPage(),
+                'per_page' => $bookmarksPaginated->perPage(),
+                'total' => $bookmarksPaginated->total(),
+            ]);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Error Displayed Data: ' . $e->getMessage(), 500);
+        }
     }
 
     //////////////////
